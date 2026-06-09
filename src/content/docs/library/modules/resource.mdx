@@ -1,0 +1,101 @@
+---
+title: Resource
+description: Factory for Item and Unit data structures with validation.
+---
+
+Resource provides validated factory functions for creating Item and Unit data structures used throughout the game's inventory and unit systems.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Resource = require(ReplicatedStorage.Modules.Resource)
+
+-- Create an item
+local coin = Resource.Item {
+    Name = 'Coins',
+    Amount = 100,
+}
+
+-- Create a unit
+local unit = Resource.Unit {
+    Name = 'Gojo (Final)',
+    Level = 50,
+    Shiny = true,
+    Stats = { DMG = 1000, SPA = 5, RNG = 20 },
+}
+
+-- Access default templates
+print(Resource.Default.Unit.Level)  -- 1
+print(Resource.Default.Item.Amount)  -- 1
+```
+
+## API Reference
+
+### `Resource.Item(props: ItemInput): Item`
+
+Creates a validated Item structure.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Name` | `string` | Item identifier (required) |
+| `Amount` | `number?` | Stack amount (defaults to 1) |
+
+### `Resource.Unit(props: UnitInput): Unit`
+
+Creates a validated Unit structure with defaults applied.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `Name` | `string` | (required) | Unit identifier |
+| `Level` | `number?` | `1` | Current level |
+| `LevelMax` | `number?` | `100` | Maximum level |
+| `Locked` | `boolean?` | `true` | If unit is locked |
+| `Shiny` | `boolean?` | `false` | Shiny variant |
+| `Skin` | `string?` | `nil` | Equipped skin |
+| `Stats` | `{DMG?, SPA?, RNG?}?` | `{1,1,1}` | Combat stats |
+| `Artifacts` | `{string}?` | `{}` | Equipped artifacts |
+| `Traits` | `{string}?` | `{}` | Unit traits |
+| `Takedowns` | `number?` | `0` | Kill count |
+| `ObtainedAt` | `number?` | `1` | Unix timestamp |
+
+### `Resource.CloneTable(tbl): table`
+
+Deep clones a table structure.
+
+### `Resource.Default`
+
+Frozen default templates:
+- `Default.Unit` - Default unit structure
+- `Default.Item` - Default item structure
+
+## Data Types
+
+### `ItemStruct`
+```luau
+type ItemStruct = {
+    Name: string,
+    Amount: number,
+}
+```
+
+### `UnitStruct`
+```luau
+type UnitStruct = {
+    Artifacts: { string },
+    Level: number,
+    LevelMax: number,
+    Locked: boolean,
+    Name: string,
+    ObtainedAt: number,
+    Shiny: boolean,
+    Skin: string?,
+    Stats: { DMG: number, SPA: number, RNG: number },
+    Takedowns: number,
+    Traits: { string },
+}
+```
+
+## Validation
+
+Uses `t` library for runtime type checking. Invalid inputs throw assertions with descriptive messages.

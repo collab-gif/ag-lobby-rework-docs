@@ -1,0 +1,73 @@
+---
+title: Hotbar
+description: Player loadout hotbar UI component with level-gated slots.
+---
+
+Hotbar renders the player loadout bar with 6 unit slots, XP bar, and keyboard input binding.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Hotbar = require(ReplicatedStorage.Components.Hotbar)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+local hotbar = Hotbar.new({
+    level = Vide.source(10),
+    xp = {
+        max = Vide.source(1000),
+        val = Vide.source(450),
+    },
+    hotbar = {
+        U1 = { thing = Vide.source('UnitA'), level = Vide.source(5), price = Vide.source(100) },
+        U2 = { thing = Vide.source('UnitB'), level = Vide.source(3), price = Vide.source(50) },
+        U3 = { thing = Vide.source(''), level = Vide.source(0), price = Vide.source(0) },
+        U4 = { thing = Vide.source(''), level = Vide.source(0), price = Vide.source(0) },
+        U5 = { thing = Vide.source(''), level = Vide.source(0), price = Vide.source(0) },
+        U6 = { thing = Vide.source(''), level = Vide.source(0), price = Vide.source(0) },
+    },
+    OnSlotClicked = function(index, is_locked)
+        print('Slot', index, 'locked:', is_locked)
+    end,
+})
+
+hotbar.Parent = playerGui.Main
+```
+
+## Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `level` | `Vide.Source<number>` | Player level for unlock check |
+| `xp.max` | `Vide.Source<number>` | XP required for next level |
+| `xp.val` | `Vide.Source<number>` | Current XP value |
+| `hotbar.U1-U6` | `Slot` | Slot data for each position |
+| `OnSlotClicked` | `(index: number, is_locked: boolean) -> ()` | Click callback |
+
+### Slot Type
+
+```luau
+type Slot = {
+    thing: Vide.Source<string>,   -- Unit/item name or '' for empty
+    level: Vide.Source<number>,   -- Unit level
+    price: Vide.Source<number>,   -- Deployment cost
+}
+```
+
+## Slot Unlock Levels
+
+| Slot | Required Level |
+|------|----------------|
+| U1 | 0 |
+| U2 | 0 |
+| U3 | 0 |
+| U4 | 5 |
+| U5 | 10 |
+| U6 | 15 |
+
+## Features
+
+- **Level locking**: Slots show lock icon until level requirement met
+- **Keyboard input**: Keys 1-6 trigger slot clicks via ButtonCapture
+- **Visual states**: Fade variant for locked slots, hover stroke effect
+- **ThingFrameDisplay**: Each slot uses ThingFrameDisplay for consistent rendering

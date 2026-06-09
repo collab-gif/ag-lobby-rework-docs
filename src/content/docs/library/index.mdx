@@ -1,0 +1,87 @@
+---
+title: Library Reference
+description: Complete API reference for the Anime Guardian codebase.
+---
+
+Complete API documentation for the Anime Guardian codebase modules.
+
+## Components
+
+UI components for the lobby and game interface.
+
+| Module | Description |
+|--------|-------------|
+| [ButtonCapture](./components/buttoncapture/) | Mouse input capture with reactive state |
+| [Hotbar](./components/hotbar/) | Game hotbar with 6 slots |
+| [ThingDisplay](./components/thingdisplay/) | Item/unit display with 3D preview |
+| [ThingFrameDisplay](./components/thingframedisplay/) | Slot frame with rarity borders |
+
+## Configs
+
+Data definitions and configuration modules.
+
+| Module | Description |
+|--------|-------------|
+| [ItemsConfig](./configs/items-config/) | 100+ item definitions |
+| [RarityConfig](./configs/rarity-config/) | Rarity system with gradients |
+| [UnitConfig](./configs/unit-config/) | Unit registration and data |
+
+## Helpers
+
+Utility modules for common operations.
+
+| Module | Description |
+|--------|-------------|
+| [ThingUtils](./helpers/thingutils/) | Type detection for items/units |
+| [UIUtils](./helpers/uiutils/) | UI layout helpers |
+| [UserSave](./helpers/usersave/) | Client-side save utilities |
+
+## Modules
+
+Core game systems and controllers.
+
+| Module | Description |
+|--------|-------------|
+| [ClientState](./modules/clientstate/) | Global client state |
+| [Exp](./modules/exp/) | Level/EXP system |
+| [Resource](./modules/resource/) | Item/Unit data factories |
+| [Sounds](./modules/sounds/) | Audio playback |
+| [UIManager](./modules/uimanager/) | Screen management |
+| [UnitPreview](./modules/unitpreview/) | Unit preview UI |
+| [UnitStreaming](./modules/unitstreaming/) | Model loading |
+
+## Vendor
+
+Reusable utility libraries.
+
+| Module | Description |
+|--------|-------------|
+| [AttrAtom](./vendor/attratom/) | Attribute reactive atoms |
+| [bubbleFX](./vendor/bubblefx/) | Bubble particle effects |
+| [CharmUtils](./vendor/charmutils/) | State utilities |
+| [Client](./vendor/client/) | Player singleton |
+| [Debounce](./vendor/debounce/) | Function debouncing |
+| [FormatNumber](./vendor/formatnumber/) | Number formatting |
+| [GetRig](./vendor/getrig/) | Character rig access |
+| [GetRigFromChar](./vendor/getrigfromchar/) | Rig from character |
+| [JanitorUtils](./vendor/janitorutils/) | Cleanup utilities |
+| [Mirra](./vendor/mirra/) | Data observation |
+| [ObserveChildren](./vendor/observechildren/) | Children watcher |
+| [repr](./vendor/repr/) | Table printing |
+| [SpatialHash](./vendor/spatialhash/) | Spatial indexing |
+| [Spr](./vendor/spr/) | Spring animations |
+| [Spring](./vendor/spring/) | Spring physics |
+| [Sweep](./vendor/sweep/) | Reactive scopes |
+| [TableCleanup](./vendor/tablecleanup/) | Memory management |
+| [UID](./vendor/uid/) | Unique ID generation |
+| [VideHelper](./vendor/videhelper/) | UI reactive helpers |
+
+## Server
+
+Server-side only modules.
+
+| Module | Description |
+|--------|-------------|
+| [RewardService](./server/reward-service/) | Reward distribution |
+| [SaveSS](./server/savess/) | Data persistence |
+| [SaveTemplate](./server/savetemplate/) | New player template |

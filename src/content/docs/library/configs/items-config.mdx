@@ -1,0 +1,203 @@
+---
+title: ItemsConfig
+description: Item database with 100+ item definitions including categories, rarities, and 3D model previews.
+---
+
+ItemsConfig is the central item database for the game. It defines 100+ items across 12 categories, handling everything from portals and materials to artifacts, food, and gamepass items.
+
+## Overview
+
+Items are created using the `Item()` factory function with a strongly-typed configuration. Each item has a category, rarity, icon, description, and optional 3D model configuration for previews.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local ItemsConfig = require(ReplicatedStorage.Configs.ItemsConfig)
+
+-- Retrieve an item definition
+local coinItem = ItemsConfig.Get('Coins')
+if coinItem then
+    print(coinItem.DisplayName)  -- "Coins"
+    print(coinItem.Rarity)       -- "SSR"
+    print(coinItem.MaxAmount)    -- 10000000
+end
+
+-- Check category
+local function isPortal(itemName: string): boolean
+    local item = ItemsConfig.Get(itemName)
+    return item ~= nil and item.Category == ItemsConfig.CategoryEnum.Portal
+end
+
+-- Access all items
+for name, item in pairs(ItemsConfig.items) do
+    print(`{name}: {item.DisplayName} ({item.Rarity})`)
+end
+```
+
+## API Reference
+
+### `ItemsConfig.Get(name: string): Item?`
+
+Retrieves an item definition by name. Returns `nil` if not found.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `string` | The item's unique identifier key |
+
+### `ItemsConfig.items`
+
+Table containing all item definitions keyed by item name.
+
+### `ItemsConfig.CategoryEnum`
+
+Enum table of valid item categories:
+
+| Category | Description |
+|----------|-------------|
+| `None` | Uncategorized/empty item |
+| `Portal` | Dungeon/raid entry portals |
+| `Product` | Game products |
+| `Material` | Crafting and evolution materials |
+| `EvolvedItem` | Items used for unit evolution |
+| `Artifacts` | Equippable artifact items |
+| `Gamepass` | Game pass items |
+| `Visual` | Visual/cosmetic items |
+| `Rune` | Rune stones for crafting |
+| `Food` | Consumable food items |
+| `Gift` | Gift items |
+| `Gacha` | Gacha summon items |
+| `Capsule` | Capsule containers |
+| `Potion` | Consumable potions |
+
+## Data Types
+
+### `ItemConfig`
+
+Input type for creating items:
+
+```luau
+type ItemConfig = {
+    Category: string,           -- Must be a valid category enum
+    Description: string,        -- Item description text
+    DisplayName: string?,       -- Optional display name (defaults to key)
+    Icon: string,               -- rbxassetid:// for the item icon
+    MaxAmount: number?,         -- Max stack size (default: math.huge)
+    Model: ModelConfig?,        -- Optional 3D model configuration
+    Rarity: RarityConfig.Rarity,-- Item rarity from RarityConfig
+}
+```
+
+### `Item`
+
+The resulting item type after processing:
+
+```luau
+type Item = {
+    Category: ItemCategory,     -- Validated category enum
+    Description: string,        -- Item description
+    DisplayName: string,        -- Final display name
+    Icon: string,               -- Icon asset ID
+    MaxAmount: number,          -- Stack limit
+    Model: ModelConfig?,        -- 3D model config if provided
+    Rarity: RarityConfig.Rarity,-- Item rarity
+}
+```
+
+### `ModelConfig`
+
+Configuration for 3D item previews:
+
+```luau
+type ModelConfig = {
+    CameraScene: { [string]: Charm.Atom<string> },
+    Obj: Model?,                -- Runtime model reference
+    UseWorldModel: boolean,     -- Use world model vs viewport
+}
+```
+
+## Item Definitions
+
+### Defining New Items
+
+Use the `Item()` factory with `Model()` helper for 3D previews:
+
+```luau
+local RarityConfig = require(ReplicatedStorage.Configs.RarityConfig)
+local RarityEnum = RarityConfig.EnumRarity
+
+['My New Item'] = Item {
+    Category = ItemCategoryEnum.Material,
+    Icon = 'rbxassetid://123456789',
+    Description = 'Used for crafting legendary equipment',
+    MaxAmount = 100,
+    Rarity = RarityEnum.LR,
+    Model = Model {
+        UseWorldModel = false,
+        CameraScene = CameraScene { 'Default', 'Full' },
+    },
+},
+```
+
+### Camera Scenes
+
+Create multiple camera angles for 3D previews:
+
+```luau
+CameraScene { 'Default' }     -- Single angle
+CameraScene { 'Default', 'Full' }  -- Multiple angles
+```
+
+## Example Items
+
+### Portal Item
+
+```luau
+['Story (Portal)'] = Item {
+    Category = ItemCategoryEnum.Portal,
+    Icon = 'rbxassetid://16618198724',
+    Description = 'Create Room to Play Story! (Level 1+)',
+    MaxAmount = 1,
+    Rarity = RarityEnum.LR,
+    Model = Model {
+        UseWorldModel = false,
+        CameraScene = CameraScene { 'Default' },
+    },
+},
+```
+
+### Material with High Stack
+
+```luau
+['Coins'] = Item {
+    Category = ItemCategoryEnum.Material,
+    Icon = 'rbxassetid://92615289131312',
+    Description = 'Standard game currency.',
+    MaxAmount = 10000000,
+    Rarity = RarityEnum.SSR,
+},
+```
+
+### Artifact (Unique Equip)
+
+```luau
+['Claymore'] = Item {
+    Category = ItemCategoryEnum.Artifacts,
+    Icon = 'rbxassetid://75997555854894',
+    Description = 'Increases Guts (Berserk) bleeding damage by 200%.',
+    MaxAmount = 1,  -- Only one can be owned
+    Rarity = RarityEnum.LR,
+},
+```
+
+### Consumable Food
+
+```luau
+['Hot dog'] = Item {
+    Category = ItemCategoryEnum.Food,
+    Icon = 'rbxassetid://123175382630091',
+    Description = 'add 50 exp for unit',
+    MaxAmount = 5000,
+    Rarity = RarityEnum.SR,
+},
+```

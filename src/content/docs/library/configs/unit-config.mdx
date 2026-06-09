@@ -1,0 +1,202 @@
+---
+title: UnitConfig
+description: Unit registration system with 100+ unit definitions using builder pattern and camera scene configuration.
+---
+
+UnitConfig manages the unit database using a builder pattern for clean, declarative unit definitions. It supports camera scenes for 3D previews and re-exports the registration interface.
+
+## Overview
+
+Units are registered via `UnitConfigConstructor.Register` using a curried DSL pattern. Each unit defines placement rules (max count, terrain type) and rarity. Camera scenes for 3D previews are automatically configured.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UnitConfig = require(ReplicatedStorage.Configs.UnitConfig)
+
+-- Retrieve a unit definition
+local gojo = UnitConfig.Get('Gojo (Final)')
+if gojo then
+    print(gojo.DisplayName)  -- "Gojo (Final)"
+    print(gojo.MaxPlace)     -- 3
+    print(gojo.PlaceType)    -- "Ground"
+    print(gojo.Rarity)       -- "UR"
+end
+
+-- Access all registered units
+for name, data in pairs(UnitConfig.registers) do
+    print(`{name}: {data.DisplayName} ({data.Rarity})`)
+end
+
+-- Check unit placement rules
+local function canPlaceOnHill(unitName: string): boolean
+    local unit = UnitConfig.Get(unitName)
+    return unit ~= nil and unit.PlaceType == 'Hill'
+end
+```
+
+## API Reference
+
+### `UnitConfig.Get(name: string): UnitData?`
+
+Retrieves a unit definition by name. Returns `nil` if not found.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `string` | The unit's unique identifier key |
+
+### `UnitConfig.registers`
+
+Table containing all unit definitions keyed by unit name.
+
+## Registration DSL
+
+Units are defined using the builder pattern:
+
+```luau
+local RarityConfig = require(ReplicatedStorage.Configs.RarityConfig)
+local RarityEnum = RarityConfig.EnumRarity
+
+-- Import the Register function (aliased as New)
+local New = UnitConfigConstructor.Register
+
+New 'Unit Name' {
+    MaxPlace = 3,              -- Max copies deployable
+    PlaceType = 'Ground',      -- Terrain type
+    Rarity = RarityEnum.SSR,   -- Unit rarity
+    DisplayName = 'Custom',   -- Optional, defaults to key
+}
+```
+
+### Placement Types
+
+| Type | Description |
+|------|-------------|
+| `Ground` | Standard ground placement |
+| `Hill` | Elevated/hill terrain placement |
+| `Buff` | Buff-type unit placement |
+| `Farm` | Farming/resource unit placement |
+| `npc` | NPC/character placement |
+
+## Data Types
+
+### `Config`
+
+Input configuration for unit registration:
+
+```luau
+type Config = {
+    DisplayName: string?,       -- Optional display name
+    MaxPlace: number,           -- Max deployable count
+    PlaceType: 'Buff' | 'Farm' | 'Ground' | 'Hill' | 'npc',
+    Rarity: RarityConfig.Rarity,
+}
+```
+
+### `UnitData`
+
+The resulting unit type after registration:
+
+```luau
+export type UnitData = {
+    CameraScene: {              -- 3D preview camera angles
+        Default: Charm.Atom<string>,
+        Full: Charm.Atom<string>,
+    },
+    DisplayName: string,        -- Final display name
+    MaxPlace: number,           -- Placement limit
+    PlaceType: 'Buff' | 'Farm' | 'Ground' | 'Hill' | 'npc',
+    Rarity: RarityConfig.Rarity,
+}
+```
+
+## Unit Examples
+
+### Basic Ground Unit
+
+```luau
+New 'Gojo (Final)' {
+    MaxPlace = 3,
+    PlaceType = 'Ground',
+    Rarity = RarityEnum.UR,
+}
+```
+
+### Hill Placement Unit
+
+```luau
+New 'Griffith (Sacrifice)' {
+    MaxPlace = 1,
+    PlaceType = 'Hill',
+    Rarity = RarityEnum.LR,
+}
+```
+
+### Limited Legendary
+
+```luau
+New 'Goku (Ultra Instinct)' {
+    MaxPlace = 2,              -- Only 2 can be placed
+    PlaceType = 'Ground',
+    Rarity = RarityEnum.LR,    -- Legendary rarity
+}
+```
+
+### Buff Type Unit
+
+```luau
+New 'Whis' {
+    MaxPlace = 1,
+    PlaceType = 'Buff',        -- Support/buff unit
+    Rarity = RarityEnum.R,
+}
+```
+
+### Farm Type Unit
+
+```luau
+New 'Senko' {
+    MaxPlace = 2,
+    PlaceType = 'Farm',        -- Resource generation
+    Rarity = RarityEnum.SSR,
+}
+```
+
+## Internal Structure
+
+The registration logic lives in `_internal/UnitConfigConstructor`. The public `init.luau` re-exports:
+
+```luau
+local UnitConfigConstructor = require('@self/_internal/UnitConfigConstructor')
+
+local config = {}
+config.registers = UnitConfigConstructor.registers
+
+function config.Get(name: string): UnitConfigConstructor.UnitData?
+    return UnitConfigConstructor.registers[name]
+end
+
+return config
+```
+
+## Camera Scenes
+
+Camera scenes are automatically configured per unit:
+
+```luau
+-- CameraConfig folder contains position data
+local CameraConfig = script.Parent.Parent:WaitForChild('CameraConfig')
+
+-- Default scene values if no config exists
+string.pack('fffhhhf', 0, 2, 400, 0, 180, 0, 0)
+-- Format: offsetX, offsetY, offsetZ, rotX, rotY, rotZ, FOV
+```
+
+Access camera scenes on a unit:
+
+```luau
+local unit = UnitConfig.Get('My Unit')
+local defaultScene = unit.CameraScene.Default()
+local fullScene = unit.CameraScene.Full()
+```

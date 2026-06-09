@@ -1,0 +1,165 @@
+---
+title: Debounce
+description: Function cooldown and rate-limiting with key-based tracking
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+Debounce provides cooldown management for functions using address-key pairs. Track multiple cooldowns per system with custom timers, check remaining time, and batch cleanup.
+
+## Usage
+
+### Basic Cooldown
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Debounce = require(ReplicatedStorage.Vendor.Debounce)
+
+-- Check if action is on cooldown
+if Debounce.it_cooldown('combat', 'attack', 0.5) then
+    print('Attack on cooldown!')
+    return
+end
+
+-- Execute attack
+performAttack()
+```
+
+### Custom Timer Function
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Debounce = require(ReplicatedStorage.Vendor.Debounce)
+
+-- Use custom time source (e.g., workspace.DistributedGameTime)
+Debounce.locate('mySystem', function()
+    return workspace.DistributedGameTime
+end)
+
+-- Now uses the custom timer
+Debounce.it_cooldown('mySystem', 'action', 5)
+```
+
+### Time Remaining
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Debounce = require(ReplicatedStorage.Vendor.Debounce)
+
+-- Get remaining cooldown time
+local remaining = Debounce.time('combat', 'specialAttack')
+if remaining > 0 then
+    print(string.format('Cooldown: %.1f seconds', remaining))
+end
+```
+
+### State Checking
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Debounce = require(ReplicatedStorage.Vendor.Debounce)
+
+-- Just check if on cooldown without setting
+if Debounce.is_cooldown('movement', 'dash') then
+    return
+end
+
+-- Set the cooldown after executing
+dash()
+Debounce.cooldown('movement', 'dash', tick() + 2)
+```
+
+### Cleanup
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Debounce = require(ReplicatedStorage.Vendor.Debounce)
+
+-- Remove expired entries only
+Debounce.cleanup('combat')
+
+-- Wipe all entries for an address
+Debounce.cleanup('combat', true)
+
+-- Complete destruction
+Debounce.destroy('combat')
+```
+
+## API Reference
+
+### locate
+
+```lua
+function Debounce.locate(address: any, timer: (() -> number)?): nil
+```
+
+Registers an address with optional custom timer function. Default timer is `tick()`.
+
+### cooldown
+
+```lua
+function Debounce.cooldown(address: any, key: string, stamp: number?): number
+```
+
+Sets cooldown expiration timestamp. Returns the stamp value.
+
+| Parameter | Description |
+|-----------|-------------|
+| `address` | System/category identifier |
+| `key` | Action identifier within the system |
+| `stamp` | Expiration time (from timer function) |
+
+### is_cooldown
+
+```lua
+function Debounce.is_cooldown(address: any, key: string): boolean
+```
+
+Returns `true` if the key is currently on cooldown.
+
+### time
+
+```lua
+function Debounce.time(address: any, key: string): number
+```
+
+Returns remaining cooldown time (0 if expired or not set).
+
+### it_cooldown
+
+```lua
+function Debounce.it_cooldown(address: any, key: string, duration: number): boolean
+```
+
+Combined check-and-set. Returns `true` if on cooldown, otherwise sets cooldown for `duration` and returns `false`.
+
+| Parameter | Description |
+|-----------|-------------|
+| `duration` | Seconds to add to current time |
+
+### cleanup
+
+```lua
+function Debounce.cleanup(address: any, wipe: boolean?): nil
+```
+
+Removes expired entries. If `wipe` is `true`, clears all entries.
+
+### destroy
+
+```lua
+function Debounce.destroy(address: any): nil
+```
+
+Complete removal of address and all its data.
+
+## Best Practices
+
+- **Use `it_cooldown`** for the common check-and-set pattern
+- **Prefer string keys** over function references for clarity
+- **Call cleanup periodically** for long-running systems with many cooldowns
+- **Group related cooldowns** under the same address
+- **Custom timers** useful for server-authoritative time or custom clock sources
+- **Destroy on system shutdown** to prevent memory leaks

@@ -1,0 +1,74 @@
+---
+title: ButtonCapture
+description: Mouse input capture utility for GUI buttons with reactive state.
+---
+
+ButtonCapture wraps `GuiButton` instances to provide reactive state atoms and signals for mouse interactions.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local ButtonCapture = require(ReplicatedStorage.Components.ButtonCapture)
+
+local capture = ButtonCapture.New()
+capture:Attach(button)
+
+-- Read reactive state
+local is_hover = capture.IsHover()
+local is_holding_m1 = capture.IsM1Hold()
+
+-- Listen to signals
+capture.OnM1Clicked:Connect(function()
+    print('Left clicked')
+end)
+
+capture.OnM2Clicked:Connect(function()
+    print('Right clicked')
+end)
+
+-- Programmatic click
+capture:ClickM1(0.1)  -- Fire click, hold for 0.1s
+capture:ClickM2()
+```
+
+## API
+
+### `ButtonCapture.New(): ButtonCapture`
+
+Creates new capture instance with fresh state atoms and Janitor bucket.
+
+### `capture:Attach(btn: GuiButton)`
+
+Wires button events to state atoms and signals. Stores weak reference for lookup.
+
+### `capture:ClickM1(duration: number?)`
+
+Programmatically fires `OnM1Clicked` and sets `IsM1Hold` true for duration (default 0.05s).
+
+### `capture:ClickM2(duration: number?)`
+
+Same for M2.
+
+### `ButtonCapture.GetAttachCapture(btn: GuiButton): ButtonCapture?`
+
+Retrieves capture instance attached to button (weak table lookup).
+
+## State Atoms
+
+| Atom | Type | Description |
+|------|------|-------------|
+| `IsHover` | `Charm.Atom<boolean>` | Mouse over button |
+| `IsM1Hold` | `Charm.Atom<boolean>` | Left mouse held |
+| `IsM2Hold` | `Charm.Atom<boolean>` | Right mouse held |
+
+## Signals
+
+| Signal | Description |
+|--------|-------------|
+| `OnM1Clicked` | Fired on `MouseButton1Click` |
+| `OnM2Clicked` | Fired on `MouseButton2Click` |
+
+## Cleanup
+
+Capture uses Janitor internally. Call `capture.Bucket:Destroy()` or scope via Vide/Sweep cleanup to disconnect all events.

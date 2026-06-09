@@ -1,0 +1,97 @@
+---
+title: RewardService
+description: Server-side reward distribution system for items, units, and EXP.
+---
+
+RewardService provides type-safe factory functions for granting rewards to players.
+
+## Usage
+
+```luau
+local ServerStorage = game:GetService('ServerStorage')
+local RewardService = require(ServerStorage.Modules.RewardService)
+
+-- Grant items
+local giveCoins = RewardService.Thing('Item') {
+    Name = 'Coins',
+    Amount = 100,
+}
+giveCoins(player)
+
+-- Grant unit
+local giveUnit = RewardService.Thing('Unit') {
+    Name = 'Gojo (Final)',
+    Level = 1,
+    Shiny = false,
+}
+giveUnit(player)
+
+-- Grant EXP
+local giveExp = RewardService.Thing('Exp')(500)
+giveExp(player)
+
+-- Batch rewards
+local batch = RewardService.Things {
+    RewardService.Thing('Item') { Name = 'Coins', Amount = 100 },
+    RewardService.Thing('Exp')(250),
+}
+batch(player)
+```
+
+## API Reference
+
+### `RewardService.Thing(type)(config)(player)`
+
+Curried factory for reward callbacks.
+
+**Item reward:**
+```luau
+RewardService.Thing('Item')({
+    Name = string,
+    Amount = number?,  -- defaults to 1
+})
+```
+
+**Unit reward:**
+```luau
+RewardService.Thing('Unit')({
+    Name = string,              -- required
+    Level = number?,            -- default from Resource.Default.Unit
+    LevelMax = number?,
+    Locked = boolean?,
+    Shiny = boolean?,
+    Skin = string?,
+    Stats = { DMG?, SPA?, RNG? }?,
+    Artifacts = { string }?,
+    Traits = { string }?,
+    Takedowns = number?,
+    ObtainedAt = number?,
+    NoTrade = boolean?,         -- trade lock
+})
+```
+
+**EXP reward:**
+```luau
+RewardService.Thing('Exp')(amount: number)
+```
+
+### `RewardService.Things(rewards: { callback })(player)`
+
+Executes multiple reward callbacks in sequence.
+
+## Validation
+
+Uses `t` library for runtime validation:
+- Item inputs checked against `ItemInput` interface
+- Unit inputs checked against `UnitInput` interface
+- EXP amounts validated as numbers
+
+Invalid inputs throw assertions before any data is modified.
+
+## Data Persistence
+
+All rewards automatically save via `SaveSS`. Units receive generated GUIDs as keys.
+
+## Server-Side Only
+
+Requires `SaveSS`, `Exp`, and `Resource` modules. Only usable on server.

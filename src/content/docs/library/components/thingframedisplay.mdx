@@ -1,0 +1,134 @@
+---
+title: ThingFrameDisplay
+description: Composite UI frame component combining ThingDisplay with ButtonCapture for interactive item/unit slots.
+---
+
+ThingFrameDisplay wraps `ThingDisplay` in an interactive frame with `ButtonCapture` for hover effects, click handling, and visual variants. Used for inventory slots, hotbar items, and shop displays.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local ThingFrameDisplay = require(ReplicatedStorage.Components.ThingFrameDisplay)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+local frame = ThingFrameDisplay.Frame {
+    ThingName = Vide.source('Gojo (Final)'),
+    Variant = Vide.source('Normal'),
+    StateHover = Vide.source(false),
+    OnClick = function()
+        print('Frame clicked')
+    end,
+}
+
+frame.Parent = slotContainer
+```
+
+## Sub-Components
+
+### Frame
+
+Main interactive container with ThingDisplay, hover tweens, and click handling.
+
+```luau
+ThingFrameDisplay.Frame {
+    ThingName = Vide.source('UnitName'),
+    Variant = Vide.source('Normal'),  -- 'Fade' | 'BlackOut' | 'Normal'
+    StateHover = Vide.source(false),  -- Optional hover state hook
+    OnClick = function() end,         -- Optional click callback
+    HookButtonCapture = function(btn) -- Optional ButtonCapture access
+        capture = btn
+    end,
+}
+```
+
+### IconQuestionMark
+
+Placeholder icon for unknown/empty states.
+
+```luau
+ThingFrameDisplay.IconQuestionMark()
+```
+
+### IconLock
+
+Lock icon for locked/unavailable items.
+
+```luau
+ThingFrameDisplay.IconLock()
+```
+
+### IconPlus
+
+Plus icon for add/empty slot states.
+
+```luau
+ThingFrameDisplay.IconPlus()
+```
+
+### Level
+
+Level indicator label with variant-aware styling.
+
+```luau
+ThingFrameDisplay.Level {
+    Level = Vide.source(5),
+    Variant = Vide.source('Normal'),
+}
+```
+
+### Price
+
+Price display with ¥ formatting.
+
+```luau
+ThingFrameDisplay.Price {
+    Price = Vide.source(1000),
+    Variant = Vide.source('Normal'),
+}
+```
+
+### KeyLabel
+
+Keyboard shortcut label (1-6 for hotbar).
+
+```luau
+ThingFrameDisplay.KeyLabel {
+    Key = Vide.source(1),
+    Variant = Vide.source('Normal'),
+}
+```
+
+## Frame Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `ThingName` | `Vide.Source<string>` | Name of item/unit to display |
+| `Variant` | `Vide.Source<Variant>?` | Visual variant ('Fade', 'BlackOut', 'Normal') |
+| `StateHover` | `Vide.Source<boolean>?` | External hover state hook |
+| `OnClick` | `(() -> ())?` | Click callback |
+| `HookButtonCapture` | `((btn: ButtonCapture) -> ())?` | Access to underlying ButtonCapture |
+
+## Variants
+
+| Variant | Description |
+|---------|-------------|
+| `'Normal'` | Full color, default state |
+| `'Fade'` | Desaturated, lower opacity |
+| `'BlackOut'` | Darkened, disabled appearance |
+
+## Visual Features
+
+- **Rarity gradient**: Frame edge uses `RarityConfig` gradient based on unit rarity
+- **Hover scale**: Tween to 1.1x scale on hover (1.75x for units)
+- **Click feedback**: Brief 0.94x scale when clicked
+- **Unit positioning**: Units anchor at bottom-center vs center for items
+- **VPF sizing**: Dynamic spring-based size changes for viewport frames
+
+## Dependencies
+
+- `ThingDisplay` - Renders the item/unit content
+- `ButtonCapture` - Input handling and state atoms
+- `RarityConfig` - Gradient colors for frame edge
+- `UnitConfig` - Rarity lookup for displayed units
+- `FormatNumber` - Price formatting with commas

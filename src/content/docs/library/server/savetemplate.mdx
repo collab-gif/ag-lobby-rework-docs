@@ -1,0 +1,80 @@
+---
+title: SaveTemplate
+description: Default player data template for new players.
+---
+
+SaveTemplate defines the initial data structure for new players joining the game.
+
+## Usage
+
+```luau
+local ServerStorage = game:GetService('ServerStorage')
+local SaveTemplate = require(ServerStorage.Modules.DataSystem.SaveTemplate)
+
+-- Get fresh template for new player
+local playerData = SaveTemplate()
+```
+
+## Template Structure
+
+```luau
+{
+    Main = {
+        Cosmetic = nil,           -- Equipped cosmetic
+        Level = 1,                  -- Starting level
+        MaxUnit = 100,              -- Max units player can hold
+        EXP = {
+            Max = 50,               -- EXP needed for level 2
+            Val = 0,                -- Current EXP
+        },
+    },
+    UnitPackage = {
+        U1 = nil,                   -- Equipped unit slot 1
+        U2 = nil,                   -- Equipped unit slot 2
+        U3 = nil,                   -- Equipped unit slot 3
+        U4 = nil,                   -- Equipped unit slot 4
+        U5 = nil,                   -- Equipped unit slot 5
+        U6 = nil,                   -- Equipped unit slot 6
+    },
+    Items = {
+        Coins = 1000,               -- Starting currency
+        Gems = 0,                   -- Premium currency
+    },
+    Units = {},                    -- Inventory units (empty)
+}
+```
+
+## Data Structure
+
+### Main
+Player progression and account data.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Cosmetic` | `any?` | Equipped cosmetic item |
+| `Level` | `number` | Player level (affects unit slots) |
+| `MaxUnit` | `number` | Maximum units in inventory |
+| `EXP.Max` | `number` | EXP required for next level |
+| `EXP.Val` | `number` | Current accumulated EXP |
+
+### UnitPackage
+Equipped unit slots keyed by slot ID. Values are unit UIDs.
+
+| Slot | Unlock Level |
+|------|-------------|
+| U1 | 0 |
+| U2 | 0 |
+| U3 | 0 |
+| U4 | 5 |
+| U5 | 10 |
+| U6 | 15 |
+
+### Items
+Inventory items by name. Values are quantities.
+
+### Units
+Mapping of `UID -> Unit` for all owned units.
+
+## Server-Side Only
+
+This module returns a factory function that creates fresh table copies. Use only on the server within `SaveSS`.

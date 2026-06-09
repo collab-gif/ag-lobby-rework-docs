@@ -1,0 +1,168 @@
+---
+title: repr
+description: Pretty-print tables for debugging with recursive serialization and Roblox type support.
+---
+
+repr is a table serialization library for debugging. Formats tables as readable strings with support for Roblox types, nested structures, and cyclic reference detection.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local repr = require(ReplicatedStorage.Vendor.repr)
+
+local data = {
+    name = 'Player1',
+    score = 100,
+    items = { 'sword', 'shield', 'potion' },
+}
+
+print(repr(data))
+-- Output:
+-- {
+--    items = { "sword", "shield", "potion" },
+--    name = "Player1",
+--    score = 100
+-- }
+```
+
+## API Reference
+
+### `repr(value: any, settings?: ReprSettings): string`
+
+Serializes a value to a formatted string.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `value` | `any` | The value to serialize |
+| `settings` | `ReprSettings?` | Optional formatting settings |
+
+### ReprSettings
+
+```luau
+type ReprSettings = {
+    pretty: boolean,              -- Use multi-line formatting (default: true)
+    robloxFullName: boolean,      -- Use GetFullName for instances (default: false)
+    robloxProperFullName: boolean, -- Use proper full names (default: true)
+    robloxClassName: boolean,     -- Show class names (default: true)
+    tabs: boolean,                -- Use tabs instead of spaces (default: true)
+    semicolons: boolean,          -- Use semicolons instead of commas (default: false)
+    spaces: number,               -- Spaces per indent level (default: 3)
+    sortKeys: boolean,            -- Sort table keys (default: true)
+}
+```
+
+## Examples
+
+### Basic Table
+
+```luau
+local data = { x = 10, y = 20 }
+print(repr(data))
+-- { x = 10, y = 20 }
+```
+
+### Nested Tables
+
+```luau
+local player = {
+    name = 'Hero',
+    stats = {
+        health = 100,
+        mana = 50,
+    },
+    inventory = {
+        { name = 'Sword', damage = 10 },
+        { name = 'Shield', defense = 5 },
+    },
+}
+
+print(repr(player))
+```
+
+### Roblox Types
+
+```luau
+local data = {
+    position = Vector3.new(10, 20, 30),
+    color = Color3.fromRGB(255, 0, 128),
+    cframe = CFrame.new(0, 10, 0),
+    part = workspace.Baseplate,
+}
+
+print(repr(data))
+-- {
+--    cframe = CFrame.new(0, 10, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+--    color = Color3.new(1, 0, 0.5019607843137255),
+--    part = game.Workspace.Baseplate (Part),
+--    position = Vector3.new(10, 20, 30)
+-- }
+```
+
+### Custom Settings
+
+```luau
+-- Compact single-line output
+local compact = repr(data, {
+    pretty = false,
+    sortKeys = false,
+})
+
+-- Spaces instead of tabs
+local spaced = repr(data, {
+    tabs = false,
+    spaces = 2,
+})
+
+-- Include semicolons
+local semicolons = repr(data, {
+    semicolons = true,
+})
+```
+
+### Cyclic Reference Detection
+
+```luau
+local a = { name = 'A' }
+local b = { name = 'B', ref = a }
+a.ref = b  -- Creates cycle
+
+print(repr(a))
+-- {
+--    name = "A",
+--    ref = {
+--       name = "B",
+--       ref = {CYCLIC}
+--    }
+-- }
+```
+
+## Supported Types
+
+- **Primitives**: `string`, `number`, `boolean`, `nil`
+- **Tables**: Nested tables, arrays, dictionaries
+- **Roblox Types**: 
+  - `Instance` (with full name and class name)
+  - `Vector3`, `Vector2`, `Vector3int16`, `Vector2int16`
+  - `CFrame`
+  - `Color3`, `ColorSequence`, `ColorSequenceKeypoint`
+  - `UDim`, `UDim2`
+  - `NumberRange`, `NumberSequence`, `NumberSequenceKeypoint`
+  - `BrickColor`, `Rect`, `Region3`, `Region3int16`
+  - `TweenInfo`, `PhysicalProperties`, `PathWaypoint`
+  - `Ray`, `Axes`, `Faces`
+  - `Enum`, `EnumItem`, `Enums`
+  - `DateTime`, `Random`, `RBXScriptConnection`, `RBXScriptSignal`
+  - `DockWidgetPluginGuiInfo`
+
+## When to Use
+
+Use repr for:
+- Debugging complex table structures
+- Logging data for analysis
+- Pretty-printing configuration data
+- Serializing data for display (not for storage)
+
+Do not use repr for:
+- Data persistence (use JSON or proper serialization)
+- Network transmission (not optimized for size)

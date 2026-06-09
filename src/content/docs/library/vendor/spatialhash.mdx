@@ -1,0 +1,174 @@
+---
+title: SpatialHash
+description: Spatial hashing for efficient position-based lookups and neighbor queries in 3D space.
+---
+
+SpatialHash implements a grid-based spatial indexing system for fast proximity queries. Useful for finding objects within a radius, collision detection, and range-based searches.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local SpatialHash = require(ReplicatedStorage.Vendor.SpatialHash)
+
+-- Create with cell size (tune based on typical query radius)
+local sh = SpatialHash.new(10)
+
+-- Insert objects at positions
+sh:insert(enemy, enemy.Root.Position)
+
+-- Update when object moves
+sh:update(enemy, oldPosition, newPosition)
+
+-- Query all objects within radius
+for obj in sh:queryRegion(tower.Position, tower.Range) do
+    tower:Target(obj)
+end
+```
+
+## API Reference
+
+### `SpatialHash.new(cellSize: number): SpatialHash`
+
+Creates a new spatial hash with the specified cell size.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `cellSize` | `number` | Size of each grid cell (should match typical query radius) |
+
+### `SpatialHash:insert(obj: any, pos: Vector3)`
+
+Inserts an object at the given position.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `obj` | `any` | The object to insert |
+| `pos` | `Vector3` | Position in 3D space |
+
+### `SpatialHash:remove(obj: any, pos: Vector3)`
+
+Removes an object from the given position.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `obj` | `any` | The object to remove |
+| `pos` | `Vector3` | Position where the object was inserted |
+
+### `SpatialHash:update(obj: any, oldPos: Vector3, newPos: Vector3)`
+
+Updates an object's position. Only rehashes if the cell changes.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `obj` | `any` | The object to update |
+| `oldPos` | `Vector3` | Previous position |
+| `newPos` | `Vector3` | New position |
+
+### `SpatialHash:queryRegion(center: Vector3, radius: number): () -> any`
+
+Returns an iterator over all objects within the spherical region.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `center` | `Vector3` | Center of query sphere |
+| `radius` | `number` | Radius of query sphere |
+
+Returns: Iterator function that yields objects within range.
+
+## Example: Tower Defense Targeting
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local SpatialHash = require(ReplicatedStorage.Vendor.SpatialHash)
+
+local enemyHash = SpatialHash.new(50)  -- 50-stud cells
+
+-- Enemy spawning
+local function onEnemySpawned(enemy: Model)
+    local pos = enemy.Root.Position
+    enemyHash:insert(enemy, pos)
+
+    -- Track movement
+    local connection = RunService.Heartbeat:Connect(function()
+        local newPos = enemy.Root.Position
+        if (newPos - pos).Magnitude > 1 then
+            enemyHash:update(enemy, pos, newPos)
+            pos = newPos
+        end
+    end)
+
+    enemy.Destroying:Connect(function()
+        enemyHash:remove(enemy, pos)
+        connection:Disconnect()
+    end)
+end
+
+-- Tower targeting
+local function findTargets(tower: Model, range: number)
+    local targets = {}
+    for enemy in enemyHash:queryRegion(tower.Position, range) do
+        table.insert(targets, enemy)
+    end
+    return targets
+end
+```
+
+## Example: Proximity Effects
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local SpatialHash = require(ReplicatedStorage.Vendor.SpatialHash)
+
+local playerHash = SpatialHash.new(20)
+
+-- Update player positions
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function(char)
+        local root = char:WaitForChild('HumanoidRootPart')
+        local lastPos = root.Position
+
+        playerHash:insert(plr, lastPos)
+
+        local conn = RunService.Heartbeat:Connect(function()
+            local pos = root.Position
+            if (pos - lastPos).Magnitude > 5 then
+                playerHash:update(plr, lastPos, pos)
+                lastPos = pos
+            end
+        end)
+
+        char.Destroying:Connect(function()
+            conn:Disconnect()
+            playerHash:remove(plr, lastPos)
+        end)
+    end)
+end)
+
+-- Check for nearby players (e.g., for healing aura)
+local function getNearbyPlayers(center: Vector3, radius: number)
+    local nearby = {}
+    for plr in playerHash:queryRegion(center, radius) do
+        table.insert(nearby, plr)
+    end
+    return nearby
+end
+```
+
+## Cell Size Guidelines
+
+| Cell Size | Best For |
+|-----------|----------|
+| 10-20 | Small dense areas, melee combat |
+| 30-50 | Medium range, tower defense |
+| 100+ | Large open worlds, sparse objects |
+
+Smaller cells = more precise queries but more memory overhead.
+Larger cells = less memory but more false positives in queryRegion.
+
+## Performance Notes
+
+- `insert` and `remove` are O(1)
+- `update` is O(1) if cell doesn't change, O(1) amortized if it does
+- `queryRegion` checks all cells that intersect the sphere, then filters by actual distance
+- Empty cells are automatically cleaned up
+- Objects must have `.Root.Position` or `.Position` property for distance filtering

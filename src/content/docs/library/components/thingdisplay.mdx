@@ -1,0 +1,70 @@
+---
+title: ThingDisplay
+description: Polymorphic display component for items and units with 3D viewport support.
+---
+
+ThingDisplay renders items, units, or models based on thing kind. Uses Vide reactive switching.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local ThingDisplay = require(ReplicatedStorage.Components.ThingDisplay)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+-- Simple item icon
+local icon = ThingDisplay(Vide.source('Coins'), {
+    Size = UDim2.fromScale(1, 1),
+})
+
+-- Unit with 3D viewport
+local unit_display = ThingDisplay(Vide.source('Gojo (Final)'), {
+    StateThingKind = Vide.source('Unit'),  -- or auto-detected
+    Scene = 'Default',  -- Camera scene name
+    Size = UDim2.fromScale(1, 1),
+})
+```
+
+## Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `thing_name_input` | `Vide.Source<string>` | Name of item/unit to display |
+| `StateThingKind` | `Vide.Source<string>?` | Kind override ('Item', 'ItemModel', 'Unit', 'Unknown') |
+| `Scene` | `Vide.Source<string> \| string?` | Camera scene for 3D models |
+| `Size` | `Vide.Source<UDim2> \| UDim2?` | Display size |
+| `Position` | `Vide.Source<UDim2> \| UDim2?` | Display position |
+| `AnchorPoint` | `Vide.Source<Vector2> \| Vector2?` | Anchor point |
+
+## Kinds
+
+### Item
+
+Renders `ImageLabel` with icon from `ItemsConfig`. For items with static icons.
+
+### ItemModel
+
+Renders `ViewportFrame` with 3D model from `ItemsConfig.Model.Obj`. Supports camera scenes.
+
+### Unit
+
+Renders `ViewportFrame` with unit model streamed via `UnitStreaming`. Plays 'Idle' animation if present.
+
+### Unknown
+
+Fallback display with placeholder image and thing name label.
+
+## Camera Scenes
+
+Scenes are packed binary data: `string.unpack('fffhhhf', data)` returns:
+- Position: `x, y, z`
+- Rotation: `rx, ry, rz` (degrees, converted to radians)
+- FOV: `fov`
+
+Define scenes in config:
+
+```luau
+CameraScene = CameraScene { 'Default', 'Alt' }
+```
+
+Access via atom: `meta.CameraScene['Default']()` returns packed data.

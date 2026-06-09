@@ -1,0 +1,162 @@
+---
+title: SaveSS
+description: Server-side player data saving system with DataStore integration, save queuing, and retry logic.
+---
+
+SaveSS provides server-side access to player save data with automatic DataStore integration. Wraps the Mirra sync layer with yield semantics for safe data access during player join/leave transitions.
+
+## Overview
+
+SaveSS handles:
+- Server-side player data retrieval
+- Yield-based data access during load
+- Data synchronization via Mirra
+- Player join/leave lifecycle hooks
+- Type-safe save data access
+
+:::caution[Server Only]
+This module only works in server scripts. Client-side data access uses `SaveCS`.
+:::
+
+## Usage
+
+### Basic Data Retrieval
+
+```luau
+local ServerStorage = game:GetService('ServerStorage')
+local SaveSS = require(ServerStorage.Modules.DataSystem.SaveSS)
+
+-- Get player save data (yields until loaded)
+local function onPlayerJoin(plr: Player)
+    local save = SaveSS.Get(plr)
+    if not save then
+        warn(`Failed to load save for {plr.Name}`)
+        return
+    end
+
+    print(`Player {plr.Name} has {save.Items.Coins} coins`)
+end
+```
+
+### Hooking Data Updates
+
+```luau
+local ServerStorage = game:GetService('ServerStorage')
+local SaveSS = require(ServerStorage.Modules.DataSystem.SaveSS)
+
+-- Listen for when a specific field changes
+SaveSS.HookUpdate(plr, 'Main.Level', function(new_level, old_level)
+    print(`Player level changed: {old_level} -> {new_level}`)
+end)
+```
+
+### Reacting to Data Add/Remove
+
+```luau
+local ServerStorage = game:GetService('ServerStorage')
+local SaveSS = require(ServerStorage.Modules.DataSystem.SaveSS)
+
+-- Fired when new data is added (e.g., new unit acquired)
+SaveSS.OnAdded(plr, 'Units', function(unit_id, unit_data)
+    print(`Player acquired unit: {unit_data.Name}`)
+end)
+
+-- Fired when data is removed (e.g., unit traded away)
+SaveSS.OnRemoved(plr, 'Units', function(unit_id, unit_data)
+    print(`Player lost unit: {unit_data.Name}`)
+end)
+```
+
+### Waiting for Shared Load
+
+```luau
+local ServerStorage = game:GetService('ServerStorage')
+local SaveSS = require(ServerStorage.Modules.DataSystem.SaveSS)
+
+-- Wait for the shared data system to initialize
+if not SaveSS.is_shared_loaded then
+    SaveSS.on_shared_loaded:Wait()
+end
+
+-- Now safe to access all player data
+```
+
+### Yield Until Data Available
+
+```luau
+local ServerStorage = game:GetService('ServerStorage')
+local SaveSS = require(ServerStorage.Modules.DataSystem.SaveSS)
+
+-- Use in contexts where data might not be loaded yet
+local function getPlayerLevel(plr: Player): number?
+    -- This yields internally until save is ready
+    local save = SaveSS.Get(plr)
+    if not save then return nil end
+
+    return save.Main.Level
+end
+```
+
+## API Reference
+
+### Functions
+
+| Function | Parameters | Returns | Description |
+|----------|------------|---------|-------------|
+| `Get` | `plr: Player` | `SaveTypes.Template?` | Get player save data (yields until available) |
+| `yield_get_userdata` | `plr: Player` | `SaveTypes.Template?` | Internal yield helper for data access |
+| `on_userdata_loaded` | `plr: Player` | `()` | Signal that player data is loaded (internal use) |
+| `HookUpdate` | `plr: Player, path: string, callback: (new, old) -> ()` | `()` | Listen for field changes |
+| `OnAdded` | `plr: Player, path: string, callback: (key, value) -> ()` | `()` | Listen for table insertions |
+| `OnRemoved` | `plr: Player, path: string, callback: (key, value) -> ()` | `()` | Listen for table removals |
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `on_shared_loaded` | `GoodSignal.Signal<>` | Fired when shared data system initializes |
+| `is_shared_loaded` | `boolean` | True if shared system is ready |
+
+### Types
+
+```luau
+type Template = {
+    Main: {
+        Cosmetic: any?,
+        Level: number,
+        MaxUnit: number,
+        EXP: {
+            Max: number,
+            Val: number,
+        },
+    },
+    UnitPackage: {
+        U1: string?,
+        U2: string?,
+        U3: string?,
+        U4: string?,
+        U5: string?,
+        U6: string?,
+    },
+    Items: {
+        Coins: number,
+        Gems: number,
+    },
+    Units: { [string]: UnitData },
+}
+```
+
+## Data Flow
+
+1. **Player Joins**: DataSystem loads from DataStore
+2. **SaveSS.Get()**: Yields until data available, then returns
+3. **Field Updates**: Mirra syncs to client, fires hooks
+4. **Player Leaves**: Data automatically saved to DataStore
+
+## Important Notes
+
+- `Get()` will yield indefinitely if called before data loads
+- Always guard the return: `if not save then return end`
+- Hooks persist for the player's session
+- Data mutations automatically sync to client via Mirra
+- Do not manually modify `shared.userdata` — use the sync layer

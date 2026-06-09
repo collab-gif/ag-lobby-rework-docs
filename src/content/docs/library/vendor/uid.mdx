@@ -1,0 +1,139 @@
+---
+title: UID
+description: Simple unique ID generator for collision-free identifiers
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+UID provides a minimal, stateful unique ID generator. Each call returns an incrementing integer, guaranteeing no collisions within a generator's lifetime.
+
+## Usage
+
+### Basic ID Generation
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UID = require(ReplicatedStorage.Vendor.UID)
+
+-- Create a generator instance
+local nextId = UID()
+
+-- Generate IDs
+local id1 = nextId() -- 1
+local id2 = nextId() -- 2
+local id3 = nextId() -- 3
+
+print(id1, id2, id3) -- 1 2 3
+```
+
+### Entity IDs
+
+```lua
+local UID = require(ReplicatedStorage.Vendor.UID)
+
+local entityId = UID()
+
+local entities = {}
+
+function spawnEntity(type)
+    local id = entityId()
+    entities[id] = {
+        id = id,
+        type = type,
+        created = tick()
+    }
+    return id
+end
+
+-- Spawn various entities
+local enemy1 = spawnEntity('goblin')   -- id: 1
+local enemy2 = spawnEntity('orc')      -- id: 2
+local chest = spawnEntity('treasure')  -- id: 3
+```
+
+### Request/Response Tracking
+
+```lua
+local UID = require(ReplicatedStorage.Vendor.UID)
+
+local pendingRequests = {}
+local nextRequestId = UID()
+
+function sendRequest(data)
+    local id = nextRequestId()
+    
+    pendingRequests[id] = {
+        data = data,
+        sent = tick()
+    }
+    
+    remoteEvent:FireServer(id, data)
+    return id
+end
+
+function onResponse(id, result)
+    local req = pendingRequests[id]
+    if req then
+        pendingRequests[id] = nil
+        handleResult(req.data, result)
+    end
+end
+```
+
+### Separate Generator Instances
+
+```lua
+local UID = require(ReplicatedStorage.Vendor.UID)
+
+-- Separate generators don't interfere
+local playerIdGen = UID()
+local itemIdGen = UID()
+local sessionIdGen = UID()
+
+local playerId = playerIdGen()   -- 1
+local itemId = itemIdGen()         -- 1 (separate counter)
+local sessionId = sessionIdGen()   -- 1 (separate counter)
+
+local playerId2 = playerIdGen()  -- 2
+```
+
+## API Reference
+
+### Generator Factory
+
+```lua
+function UID(): () -> number
+```
+
+Returns a new ID generator function. Each generator maintains its own counter starting at 0.
+
+| Return | Type | Description |
+|--------|------|-------------|
+| `generator` | `() -> number` | Function that returns incrementing integers |
+
+### Generator Function
+
+```lua
+local id = generator()
+```
+
+Each call returns the next integer (1, 2, 3, ...).
+
+## Comparison with Alternatives
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| UID | Simple, fast, guaranteed unique per generator | Not globally unique across generators |
+| `HttpService:GenerateGUID()` | Globally unique, string-based | Slower, longer strings |
+| `tick()` + random | May appear random | Collisions possible |
+
+## Best Practices
+
+- **Create separate generators** for different ID domains (players, items, requests)
+- **Don't persist IDs** — counters reset on server restart
+- **Use for runtime tracking** — request IDs, temporary entity handles, UI keys
+- **Combine with other data** for persistent IDs: `{uid = nextId(), session = game.JobId}`
+- **Not for security** — predictable sequence, not suitable for tokens or secrets
+- **Prefer GUIDs** for data that must remain unique across sessions

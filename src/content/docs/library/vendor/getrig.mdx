@@ -1,0 +1,79 @@
+---
+title: GetRig
+description: Player character rig access utility.
+---
+
+GetRig provides safe access to the standard R15 rig components from a player's character.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local GetRig = require(ReplicatedStorage.Vendor.GetRig)
+
+local rig = GetRig(player)
+if rig then
+    -- Move character
+    rig.root.CFrame = CFrame.new(0, 10, 0)
+    
+    -- Play animation
+    local track = rig.animator:LoadAnimation(anim)
+    track:Play()
+    
+    -- Access character parts
+    rig.char:FindFirstChild('LeftHand')
+end
+```
+
+## API Reference
+
+### `GetRig(plr: Player): Rig?`
+
+Safely retrieves rig components from player character.
+
+Returns `nil` if:
+- Player has no character
+- Character lacks `HumanoidRootPart`
+- Character lacks `Humanoid`
+- Humanoid lacks `Animator`
+
+## Rig Structure
+
+```luau
+type Rig = {
+    char: Model & {
+        HumanoidRootPart: Part,
+        Humanoid: Humanoid & { Animator: Animator },
+        Head: Part,
+        LeftHand: Part & { Grip: Motor6D },
+        RightHand: Part,
+        LeftFoot: Part,
+        RightFoot: Part,
+        LeftUpperArm: Part,
+        RightUpperArm: Part,
+        LeftLowerArm: Part,
+        RightLowerArm: Part,
+        LeftUpperLeg: Part,
+        RightUpperLeg: Part,
+        LeftLowerLeg: Part,
+        RightLowerLeg: Part,
+    },
+    root: Part,              -- HumanoidRootPart
+    hum: Humanoid,           -- Humanoid instance
+    animator: Animator,      -- Humanoid's Animator
+}
+```
+
+## Comparison with Client
+
+| Feature | GetRig | Client module |
+|---------|--------|---------------|
+| Scope | Server/Client | Client only |
+| Caching | None | Yes (respawn aware) |
+| LocalPlayer | Any player | LocalPlayer only |
+
+For client-side code that only needs LocalPlayer, prefer `Client` module:
+```luau
+local client = require(ReplicatedStorage.Vendor.Client).init()
+local root = client.root
+```

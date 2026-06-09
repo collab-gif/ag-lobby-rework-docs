@@ -1,0 +1,111 @@
+---
+title: Spr
+description: High-performance spring physics library for smooth animations.
+---
+
+Spr is a spring-driven motion library that animates Instance properties using physics-based springs. Supports numbers, vectors, CFrames, colors, and more.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local spr = require(ReplicatedStorage.Vendor.Spr)
+
+-- Animate position with spring
+spr.target(frame, 0.5, 5, {
+    Position = UDim2.fromScale(0.5, 0.5),
+})
+
+-- Animate multiple properties
+spr.target(button, 0.3, 8, {
+    Size = UDim2.fromOffset(200, 50),
+    Rotation = 15,
+    BackgroundColor3 = Color3.fromRGB(255, 100, 100),
+})
+
+-- Stop animation
+spr.stop(frame, 'Position')
+spr.stop(frame)  -- Stop all properties
+
+-- Callback when complete
+spr.completed(frame, function()
+    print('Animation finished!')
+end)
+```
+
+## API Reference
+
+### `spr.target(instance, dampingRatio, frequency, properties)`
+
+Animates properties toward target values using spring physics.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `instance` | `Instance` | Target instance |
+| `dampingRatio` | `number` | 0=undamped, 1=critically damped, >1=overdamped |
+| `frequency` | `number` | Undamped natural frequency in Hz |
+| `properties` | `{ [string]: any }` | Property names to target values |
+
+### `spr.stop(instance, property?)`
+
+Stops animation on specific property or all properties.
+
+### `spr.completed(instance, callback)`
+
+Registers callback when all springs complete for instance.
+
+## Supported Types
+
+| Type | Notes |
+|------|-------|
+| `number` | Any numeric property |
+| `boolean` | Springs toward 0/1 threshold |
+| `Vector2` | Position, scale |
+| `Vector3` | 3D position, velocity |
+| `UDim` | UI scale/offset |
+| `UDim2` | UI position, size |
+| `Color3` | Perceptually uniform color space |
+| `ColorSequence` | Start/end keypoints only |
+| `NumberRange` | Min/max values |
+| `CFrame` | Position + rotation springs |
+
+## Spring Parameters
+
+### Damping Ratio
+- `0.0` - Undamped (oscillates forever)
+- `0.3` - Underdamped (some oscillation)
+- `0.5` - Slight overshoot
+- `1.0` - Critically damped (fastest, no overshoot)
+- `2.0` - Heavily damped (slow, no overshoot)
+
+### Frequency
+Higher values = faster response. Typical range: `1-20` Hz.
+
+## Examples
+
+### Bouncy Button
+```luau
+spr.target(button, 0.4, 10, {
+    Size = UDim2.fromOffset(150, 60),
+})
+```
+
+### Smooth Color Transition
+```luau
+spr.target(frame, 0.5, 4, {
+    BackgroundColor3 = Color3.fromRGB(100, 200, 255),
+})
+```
+
+### 3D Spring
+```luau
+spr.target(part, 0.3, 6, {
+    CFrame = targetCFrame,
+})
+```
+
+## Performance
+
+- Uses `PreSimulation`/`PostSimulation` for different instance types
+- Automatic sleep when springs settle
+- Zero allocations after setup

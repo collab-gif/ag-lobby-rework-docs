@@ -1,0 +1,114 @@
+---
+title: AttrAtom
+description: Attribute-based reactive atoms for linking Instance attributes to Charm state
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+AttrAtom creates a two-way binding between Roblox Instance attributes and [Charm](https://charm.kingtux.dev/) reactive atoms. Changes to the attribute automatically update the atom, batched through Charm's batch system for performance.
+
+## Usage
+
+### Basic Attribute Binding
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local AttrAtom = require(ReplicatedStorage.Vendor.AttrAtom)
+
+-- Bind to a part's "Health" attribute with default of 100
+local part = workspace.EnemyPart
+local healthAtom, disconnect = AttrAtom(part, 'Health', 100)
+
+-- Read current value
+local currentHealth = healthAtom()
+
+-- Watch for changes via Charm effect
+local stop = require(ReplicatedStorage.Packages.Charm).effect(function()
+    print('Health changed:', healthAtom())
+end)
+
+-- Cleanup when done
+disconnect()
+stop()
+```
+
+### UI Integration with Vide
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local AttrAtom = require(ReplicatedStorage.Vendor.AttrAtom)
+local Charm = require(ReplicatedStorage.Packages.Charm)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+local function HealthBar(props)
+    local health = AttrAtom(props.target, 'Health', 100)
+    
+    return Vide.create 'Frame' {
+        Size = function()
+            return UDim2.new(health() / 100, 0, 0, 4)
+        end,
+        BackgroundColor3 = Color3.fromRGB(255, 0, 0),
+    }
+end
+```
+
+### Data Binding with Cleanup
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local AttrAtom = require(ReplicatedStorage.Vendor.AttrAtom)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+
+local bucket = Janitor.new()
+
+-- Track multiple attributes
+local speedAtom, disconnectSpeed = AttrMap(workspace.PlayerData, 'Speed', 16)
+bucket:Add(disconnectSpeed)
+
+local jumpAtom, disconnectJump = AttrMap(workspace.PlayerData, 'JumpPower', 50)
+bucket:Add(disconnectJump)
+
+-- Cleanup all at once
+bucket:Destroy()
+```
+
+## API Reference
+
+### Function
+
+```lua
+function AttrAtom(obj: Instance, attribute: string, default: any): (Charm.Atom, () -> ())
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `obj` | `Instance` | The Roblox instance with the attribute |
+| `attribute` | `string` | The attribute name to bind |
+| `default` | `any` | Default value if attribute doesn't exist |
+
+### Returns
+
+| Return | Type | Description |
+|----------|------|-------------|
+| `atom` | `Charm.Atom` | Reactive atom that syncs with the attribute |
+| `cleanup` | `() -> ()` | Function to disconnect the attribute listener |
+
+## How It Works
+
+AttrAtom uses a deferred batching system for performance:
+
+1. Attribute changes are queued in a shared table
+2. A deferred task batches all updates through `Charm.batch()`
+3. Multiple rapid attribute changes collapse into a single batch update
+4. The queue is cleared after each flush
+
+This prevents excessive re-renders in reactive UI systems when attributes change rapidly.
+
+## Best Practices
+
+- **Always store the cleanup function** and call it when the binding is no longer needed
+- **Use with Janitor or Sweep scopes** for automatic cleanup management
+- **Batch multiple AttrAtom calls** together for related attributes on the same instance
+- **Avoid creating atoms for short-lived instances** — prefer passing values directly

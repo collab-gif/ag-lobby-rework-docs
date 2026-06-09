@@ -1,0 +1,119 @@
+---
+title: ObserveChildren
+description: Instance children observation utility for tracking child added/removed events with automatic cleanup.
+---
+
+ObserveChildren captures each child of a given instance and provides a cleanup callback when children are removed. Handles both initial children and future additions.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local observeChildren = require(ReplicatedStorage.Vendor.ObserveChildren)
+
+local disconnect = observeChildren(workspace.Enemies, function(child)
+    print('Enemy added:', child.Name)
+    setupEnemy(child)
+
+    return function()
+        print('Enemy removed:', child.Name)
+        cleanupEnemy(child)
+    end
+end)
+
+-- Later: stop observing
+-- disconnect()
+```
+
+## API Reference
+
+### `observeChildren<T>(instance: Instance, callback: Callback<T>): () -> ()`
+
+Creates an observer that captures each child of the given instance.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `instance` | `Instance` | The parent instance to observe |
+| `callback` | `(child: T) -> (() -> ())?` | Called for each child, optionally returns cleanup function |
+
+Returns a disconnect function that stops observing and cleans up all children.
+
+## Callback Behavior
+
+The callback receives each child and may return an optional cleanup function:
+
+```luau
+observeChildren(folder, function(child)
+    -- Called immediately for existing children
+    -- Called later when new children are added
+    processChild(child)
+
+    return function()
+        -- Optional: called when child is removed
+        -- or when observer is disconnected
+        cleanupChild(child)
+    end
+end)
+```
+
+## Example: Dynamic UI List
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local observeChildren = require(ReplicatedStorage.Vendor.ObserveChildren)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+
+local function setupInventoryList(container: ScrollingFrame)
+    local bucket = Janitor.new()
+
+    local disconnect = observeChildren(container, function(itemFrame: Frame)
+        local itemBucket = Janitor.new()
+
+        -- Set up hover effects
+        local hoverConn = itemFrame.MouseEnter:Connect(function()
+            itemFrame.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+        end)
+        itemBucket:Add(hoverConn)
+
+        local leaveConn = itemFrame.MouseLeave:Connect(function()
+            itemFrame.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end)
+        itemBucket:Add(leaveConn)
+
+        bucket:Add(itemBucket, 'Destroy')
+
+        return function()
+            -- Cleanup when item frame is removed
+            itemBucket:Destroy()
+        end
+    end)
+
+    bucket:Add(disconnect)
+    return bucket
+end
+```
+
+## Example: Enemy Spawner Tracking
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local observeChildren = require(ReplicatedStorage.Vendor.ObserveChildren)
+
+local activeEnemies = {}
+
+local disconnect = observeChildren(workspace.Enemies, function(enemy: Model)
+    local id = enemy:GetAttribute('EnemyId')
+    activeEnemies[id] = enemy
+
+    return function()
+        activeEnemies[id] = nil
+    end
+end)
+```
+
+## Cleanup Guarantees
+
+- Cleanup functions are called when a child is removed
+- Cleanup functions are called when the observer is disconnected
+- Cleanup functions are called even if child is destroyed before setup completes
+- Initial children are processed via `task.defer` to avoid blocking

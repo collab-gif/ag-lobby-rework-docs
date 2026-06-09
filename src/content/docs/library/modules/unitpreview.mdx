@@ -1,0 +1,55 @@
+---
+title: UnitPreview
+description: UI controller for unit preview screens.
+---
+
+UnitPreview is a thin wrapper around UIManager for pushing unit preview screens.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UnitPreview = require(ReplicatedStorage.Modules.UI.UnitPreview)
+local Resource = require(ReplicatedStorage.Modules.Resource)
+
+-- Create a unit and preview it
+local unit = Resource.Unit {
+    Name = 'Gojo (Final)',
+    Level = 50,
+    Shiny = true,
+}
+
+UnitPreview.Push(unit)
+```
+
+## API Reference
+
+### `UnitPreview.Push(unit: Resource.Unit)`
+
+Pushes the UnitPreview page to UIManager as a popup.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `unit` | `Resource.Unit` | Unit data to display |
+
+**Implementation:**
+```luau
+UIManager.Push({
+    page = 'UnitPreview',
+    query = unit,
+    popup = true,
+})
+```
+
+### `UnitPreview.PAGE`
+
+Constant string `'UnitPreview'` - the page identifier used with UIManager.
+
+## Dependencies
+
+- `UIManager` - For screen routing
+- `Resource` - For Unit type
+
+## Related
+
+Used in conjunction with `ThingDisplay` for 3D unit previews in UI.

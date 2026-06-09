@@ -1,0 +1,109 @@
+---
+title: bubbleFX
+description: Bubble particle effects and UI hover animations
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+bubbleFX creates ripple-style bubble effects for UI buttons on hover/click. It spawns animated visual elements that expand from the cursor position and fade out, providing satisfying tactile feedback.
+
+## Usage
+
+### Basic Hover Effect
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local bubbleFX = require(ReplicatedStorage.Vendor.bubbleFX)
+
+local button = playerGui.MainMenu.PlayButton
+
+button.MouseButton1Down:Connect(function(mousePos)
+    -- Mouse position, button, size multiplier
+    bubbleFX.AddEffect(mousePos, button, 2.5)
+end)
+```
+
+### Hover Effect on Enter
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local bubbleFX = require(ReplicatedStorage.Vendor.bubbleFX)
+
+local button = playerGui.Shop.BuyButton
+
+button.MouseEnter:Connect(function()
+    bubbleFX.AddEffect(
+        Vector2.new(
+            button.AbsolutePosition.X + button.AbsoluteSize.X / 2,
+            button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
+        ),
+        button,
+        1.5
+    )
+end)
+```
+
+### Dynamic Size Based on Button
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local bubbleFX = require(ReplicatedStorage.Vendor.bubbleFX)
+
+local function addSmartBubble(button, clickPos)
+    -- Larger buttons get larger bubbles
+    local area = button.AbsoluteSize.X * button.AbsoluteSize.Y
+    local multiplier = math.clamp(area / 10000, 1.5, 3)
+    
+    bubbleFX.AddEffect(clickPos, button, multiplier)
+end
+```
+
+## API Reference
+
+### AddEffect
+
+```lua
+function bubbleFX.AddEffect(
+    mousePosition: Vector2,
+    button: GuiButton,
+    sizeMultiplier: number
+): nil
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mousePosition` | `Vector2` | Screen position where the effect originates |
+| `button` | `GuiButton` | The UI button to attach the effect to |
+| `sizeMultiplier` | `number` | Size scaling factor relative to button dimensions |
+
+## How It Works
+
+1. **Clones a sample ImageLabel** from the module's internal template
+2. **Positions at mouse location** relative to the button
+3. **Calculates size** based on the larger button dimension × multiplier
+4. **Tweens size and position** using `TweenService` with Quad/Out easing
+5. **Fades out over time** through gradual transparency increases
+6. **Cleans up** by destroying the cloned element after animation
+
+The effect runs in a spawned thread to avoid blocking the main thread.
+
+## Configuration
+
+The module contains internal defaults:
+
+- **Animation duration**: 0.35 seconds
+- **Fade steps**: 10 increments of 0.05 transparency
+- **Easing style**: `Enum.EasingStyle.Quad`
+- **Easing direction**: `Enum.EasingDirection.Out`
+
+These are not exposed for configuration — fork the module to customize.
+
+## Best Practices
+
+- **Use for primary actions only** — overusing bubbles dilutes their impact
+- **Size multipliers between 1.5-3.0** work best for most buttons
+- **Spawn threads handle cleanup** — no manual cleanup needed
+- **Check button exists** before calling (module guards internally)
+- **Position at click point** for buttons, center for hover effects

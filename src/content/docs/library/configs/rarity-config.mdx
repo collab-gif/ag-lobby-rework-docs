@@ -1,0 +1,161 @@
+---
+title: RarityConfig
+description: Rarity system with color gradients and animated gradient effects for UI elements.
+---
+
+RarityConfig manages the rarity tier system with color gradients and animated visual effects. It provides type-safe rarity values and dynamic gradient generation for UI components.
+
+## Overview
+
+The rarity system uses 6 tiers: None, R, SR, SSR, UR, and LR. Each rarity has a defined color gradient that can be applied to UI elements with automatic animation via `RenderStepped`.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local RarityConfig = require(ReplicatedStorage.Configs.RarityConfig)
+
+-- Type-safe rarity values
+local rarity = RarityConfig.EnumRarity.SSR
+
+-- Get gradient for UI
+local gradient = RarityConfig.GetGradientRef('SSR')
+gradient:Clone().Parent = myFrame
+
+-- Reactive gradient with Vide
+local raritySource = Vide.source('SSR')
+local gradientSource = RarityConfig.GetGradientSource(raritySource)
+```
+
+## API Reference
+
+### `RarityConfig.EnumRarity`
+
+Type-safe enum table for rarity values:
+
+```luau
+R = 'R'           -- Common
+SR = 'SR'         -- Super Rare
+SSR = 'SSR'       -- Super Super Rare
+UR = 'UR'         -- Ultra Rare
+LR = 'LR'         -- Legendary Rare
+None = 'None'     -- No rarity
+```
+
+### `RarityConfig.GetGradientRef(rarity: string): UIGradient`
+
+Returns a cached `UIGradient` instance for the given rarity. Returns the `None` gradient if rarity not found.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `rarity` | `string` | Rarity tier (R, SR, SSR, UR, LR, None) |
+
+### `RarityConfig.GetGradientSource(rarity: Vide.Source<string?>): Vide.Source<UIGradient>`
+
+Returns a Vide reactive source that updates when the input rarity changes. Automatically handles nil values by defaulting to `'None'`.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `rarity` | `Vide.Source<string?>` | Reactive rarity source |
+
+## Type Definitions
+
+### `Rarity`
+
+Exported string literal type:
+
+```luau
+export type Rarity = 'R' | 'SR' | 'SSR' | 'UR' | 'LR' | 'None'
+```
+
+## Color Gradients
+
+| Rarity | Color Description |
+|--------|-------------------|
+| `None` | Gray (74, 74, 74) |
+| `R` | Silver gradient (200,200,210 → 80,80,95) |
+| `SR` | Blue gradient (70,130,235 → 30,85,200) |
+| `SSR` | Rainbow 7-color sequence |
+| `UR` | Dark red gradient (15,5,8 → 220,30,50) |
+| `LR` | Pink gradient (255,170,200 → 140,20,60) |
+
+## Animated Gradients
+
+RarityConfig automatically animates gradients on tagged UI elements:
+
+```luau
+-- Tag a frame for auto-gradient application
+frame:AddTag('RarityGrad')
+frame:SetAttribute('Rarity', 'SSR')
+
+-- RarityConfig handles:
+-- - Gradient creation/cloning
+-- - Rotation and offset setup
+-- - Seamless color cycling animation
+-- - Cleanup on removal
+```
+
+### Animation Properties
+
+| Rarity | Spin Speed | Direction |
+|--------|------------|-----------|
+| R | 60 deg/s | Forward |
+| SR | 90 deg/s | Forward |
+| SSR | 130 deg/s | Forward |
+| UR | 190 deg/s | Forward |
+| LR | 280 deg/s | Reverse |
+
+## Integration Example
+
+### Manual Gradient Application
+
+```luau
+local RarityConfig = require(ReplicatedStorage.Configs.RarityConfig)
+
+local function applyRarityGradient(frame: Frame, rarity: string)
+    local gradient = RarityConfig.GetGradientRef(rarity):Clone()
+    gradient.Name = 'RarityGradient'
+    gradient.Offset = Vector2.new(0, 0)
+    gradient.Rotation = 45
+    gradient.Parent = frame
+end
+```
+
+### Reactive with Vide
+
+```luau
+local RarityConfig = require(ReplicatedStorage.Configs.RarityConfig)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+local function rarityFrame(props)
+    local raritySource = props.rarity
+    local gradientSource = RarityConfig.GetGradientSource(raritySource)
+
+    return Vide.create 'Frame' {
+        Size = UDim2.fromScale(1, 1),
+        Vide.effect(function()
+            local grad = gradientSource()
+            grad.Parent = frame
+        end),
+    }
+end
+```
+
+### Type-Safe Rarity Handling
+
+```luau
+local RarityConfig = require(ReplicatedStorage.Configs.RarityConfig)
+type Rarity = RarityConfig.Rarity
+
+local function formatRarity(rarity: Rarity): string
+    local labels = {
+        R = 'Common',
+        SR = 'Super Rare',
+        SSR = 'Super Super Rare',
+        UR = 'Ultra Rare',
+        LR = 'Legendary',
+        None = 'None',
+    }
+    return labels[rarity] or 'Unknown'
+end
+```

@@ -1,0 +1,153 @@
+---
+title: UIManager
+description: UI lifecycle management system with screen controller registration and navigation history.
+---
+
+UIManager handles screen navigation through a stack-based history system. Uses Charm atoms for reactive page state.
+
+## Overview
+
+UIManager provides:
+- Stack-based navigation history
+- Page state management via Charm atoms
+- Push/pop/set navigation patterns
+- Page observation for lifecycle hooks
+
+## Usage
+
+### Basic Navigation
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UIManager = require(ReplicatedStorage.Modules.UIManager)
+
+-- Push a new page onto the stack
+UIManager.Push({
+    page = 'Inventory',
+    query = { tab = 'Units' },
+    popup = false,
+})
+
+-- Go back (pop current page)
+UIManager.Pop()
+
+-- Replace entire stack with new page
+UIManager.Set({
+    page = 'Shop',
+    query = { category = 'Featured' },
+    popup = false,
+})
+
+-- Clear all pages
+UIManager.Clear()
+```
+
+### Observing Page State
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UIManager = require(ReplicatedStorage.Modules.UIManager)
+local Charm = require(ReplicatedStorage.Packages.Charm)
+
+-- React to page changes
+local cleanup = UIManager.Observe('Inventory', function(page_data)
+    print('Inventory opened with query:', page_data.query())
+
+    -- Return cleanup function when page closes
+    return function()
+        print('Inventory closed')
+    end
+end)
+
+-- Stop observing later
+cleanup()
+```
+
+### Reading Current Page
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UIManager = require(ReplicatedStorage.Modules.UIManager)
+local Charm = require(ReplicatedStorage.Packages.Charm)
+
+-- Get current top page name
+local current_page = Charm.peek(UIManager.TopPageName)
+print('Current page:', current_page)
+
+-- Get full page data
+local page_data = Charm.peek(UIManager.TopPage)
+if page_data then
+    print('Page:', page_data.page)
+    print('Query:', page_data.query())
+    print('Is popup:', page_data.popup)
+end
+```
+
+### Reactive Page Visibility
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UIManager = require(ReplicatedStorage.Modules.UIManager)
+local Charm = require(ReplicatedStorage.Packages.Charm)
+
+-- Atom tracks if specific page is enabled
+local is_inventory_enabled = UIManager.PageEnabled('Inventory')
+
+-- Use in effect
+local stop = Charm.effect(function()
+    if is_inventory_enabled() then
+        print('Inventory is visible')
+    else
+        print('Inventory is hidden')
+    end
+end)
+```
+
+## API Reference
+
+### Functions
+
+| Function | Parameters | Returns | Description |
+|----------|------------|---------|-------------|
+| `Push` | `data: PageDataInput` | `()` | Push page onto history stack |
+| `Pop` | `()` | `()` | Remove top page from stack |
+| `Set` | `data: PageDataInput` | `()` | Clear stack and set single page |
+| `Clear` | `()` | `()` | Remove all pages from stack |
+| `Observe` | `page: string, callback: (PageData) -> Cleanup?` | `() -> ()` | Watch page lifecycle |
+| `PageEnabled` | `page: string` | `Charm.Atom<boolean>` | Get page visibility atom |
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `TopPage` | `Charm.Atom<PageData?>` | Current top page data |
+| `TopPageName` | `Charm.Computed<string?>` | Current top page name |
+| `OnHistoryUpdate` | `GoodSignal.Signal` | Fired on any history change |
+| `HistoryStack` | `{ PageData }` | Read-only history array |
+
+### Types
+
+```luau
+type PageData = {
+    page: string,           -- Page identifier
+    query: Charm.Atom<any>, -- Query data atom
+    popup: boolean,         -- True if overlay/modal
+}
+
+type PageDataInput = {
+    page: string,
+    query: any,
+    popup: boolean?,        -- Optional, defaults false
+}
+
+type Cleanup = () -> ()
+```
+
+## Page Lifecycle
+
+1. **Push**: Page added to stack, becomes visible
+2. **Pop**: Top page removed, previous page becomes visible
+3. **Set**: Stack cleared, new page becomes only visible page
+4. **Clear**: All pages hidden
+
+Popups stay visible when other pages change. Non-popup pages hide previous content.

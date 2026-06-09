@@ -1,0 +1,64 @@
+---
+title: JanitorUtils
+description: Janitor cleanup pattern utilities for automatic resource management.
+---
+
+Common cleanup helpers built on top of the Janitor library. Provides automatic cleanup when instances are removed from the game hierarchy.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local JanitorUtils = require(ReplicatedStorage.Vendor.JanitorUtils)
+
+-- Automatically clean up when object is destroyed
+local bucket = JanitorUtils.TrackAncestry(myGui)
+
+-- Add connections, instances, callbacks to bucket
+bucket:Add(connection)
+bucket:Add(part, 'Destroy')
+```
+
+## API Reference
+
+### `JanitorUtils.TrackAncestry(obj: Instance): Janitor`
+
+Creates a Janitor that automatically destroys itself when the given instance is removed from the game hierarchy.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `obj` | `Instance` | The instance to track for ancestry changes |
+
+Returns a `Janitor` instance that will self-clean when `obj` is destroyed or parented to `nil`.
+
+## Example
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local JanitorUtils = require(ReplicatedStorage.Vendor.JanitorUtils)
+
+local function setupUI(frame: Frame)
+    local bucket = JanitorUtils.TrackAncestry(frame)
+
+    -- Set up hover effects
+    local hoverConn = frame.MouseEnter:Connect(function()
+        frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    end)
+    bucket:Add(hoverConn)
+
+    -- Create temporary highlight
+    local highlight = Instance.new('Highlight')
+    highlight.Parent = frame
+    bucket:Add(highlight, 'Destroy')
+
+    -- No manual cleanup needed - bucket destroys itself when frame is removed
+end
+```
+
+## When to Use
+
+Use `TrackAncestry` when:
+- Creating temporary UI components that need cleanup
+- Setting up connections on instances that may be destroyed
+- Managing resources tied to a specific instance's lifetime
+- Building modular systems where cleanup should be automatic

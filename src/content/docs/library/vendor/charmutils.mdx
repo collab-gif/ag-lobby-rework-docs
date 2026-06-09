@@ -1,0 +1,148 @@
+---
+title: CharmUtils
+description: Utilities for Charm state management and Vide integration
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+CharmUtils bridges [Charm](https://charm.kingtux.dev/) atoms with [Vide](https://vide.kingtux.dev/) reactive UI. It provides utilities for subscribing to atoms, tracking ValueBase instances, and syncing with data systems.
+
+## Usage
+
+### useAtom - Subscribe to Atoms in Vide
+
+Converts a Charm atom/readable into a Vide source that re-renders on changes.
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local CharmUtils = require(ReplicatedStorage.Vendor.CharmUtils)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+local function Counter(props)
+    -- Subscribe to an atom
+    local count = CharmUtils.useAtom(function()
+        return props.countAtom()
+    end)
+    
+    return Vide.create 'TextLabel' {
+        Text = function()
+            return 'Count: ' .. count()
+        end,
+    }
+end
+```
+
+### useValueBase - Track Value Instances
+
+Creates an atom that syncs with any ValueBase instance (NumberValue, StringValue, BoolValue, etc.).
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local CharmUtils = require(ReplicatedStorage.Vendor.CharmUtils)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+
+local bucket = Janitor.new()
+
+-- Track a NumberValue
+local healthValue = workspace.PlayerStats.Health
+local disconnect, healthAtom = CharmUtils.useValueBase(healthValue)
+bucket:Add(disconnect)
+
+-- Read current value
+print('Health:', healthAtom())
+
+-- Transform on read
+local disconnect, percentAtom = CharmUtils.useValueBase(
+    healthValue,
+    function(val)
+        return val / 100 -- Convert to percentage
+    end
+)
+```
+
+### useDataValue - Sync with Data Systems
+
+Integrates with data systems that expose a `changed` signal (like GoodSignal-based data layers).
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local CharmUtils = require(ReplicatedStorage.Vendor.CharmUtils)
+local DataSystem = require(ReplicatedStorage.Modules.DataSystem)
+
+local function setupPlayerData(plr)
+    local userData = DataSystem.Get(plr)
+    if not userData then return end
+    
+    -- Sync 'Level' field to atom
+    local cleanup, levelAtom = CharmUtils.useDataValue(userData.Main, 'Level')
+    
+    -- Sync with transform
+    local cleanupCoins, coinsAtom = CharmUtils.useDataValue(
+        userData.Main,
+        'Coins',
+        function(val)
+            return val or 0 -- Default to 0 if nil
+        end
+    )
+    
+    return levelAtom, coinsAtom, cleanup
+end
+```
+
+## API Reference
+
+### useAtom
+
+```lua
+function useAtom<State>(callback: () -> State): () -> State
+```
+
+Subscribes to a Charm atom and returns a Vide source. The source updates whenever the atom changes.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `callback` | `() -> State` | Function that returns the atom value |
+
+### useValueBase
+
+```lua
+function useValueBase<T>(
+    valueBase: ValueBase,
+    transform: ((val: any) -> T)?
+): (Cleanup, Atom<T>)
+```
+
+Creates an atom from any ValueBase instance with optional transform.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `valueBase` | `BoolValue \| CFrameValue \| Color3Value \| NumberValue \| ObjectValue \| StringValue \| Instance` | The ValueBase to track |
+| `transform` | `((val: any) -> T)?` | Optional transform function |
+
+### useDataValue
+
+```lua
+function useDataValue<T>(
+    table: { changed: GoodSignal.Signal<> },
+    key: string,
+    transform: ((val: any) -> T)?
+): (Cleanup, Atom<T>)
+```
+
+Syncs a data table field to a reactive atom.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `table` | `{ changed: Signal }` | Data object with changed signal |
+| `key` | `string` | Field name to track |
+| `transform` | `((val: any) -> T)?` | Optional transform function |
+
+## Best Practices
+
+- **Always capture cleanup functions** from `useValueBase` and `useDataValue`
+- **Use Janitor/Sweep** for cleanup management in complex components
+- **Transform functions** run on every value change — keep them lightweight
+- **Guard data lookups** — check if data exists before calling `useDataValue`
+- **Combine with Vide effects** for reactive UI that responds to state changes

@@ -1,0 +1,183 @@
+---
+title: Mirra
+description: Data observation and synchronization utility for reactive data binding across client-server boundary.
+---
+
+Mirra provides bidirectional data replication between server and client using reactive observable tables. It wraps plain tables with metamethods that track changes and automatically syncs them across the network.
+
+## Overview
+
+- **Server**: Creates streams that broadcast data to clients
+- **Client**: Receives streams and observes changes
+- **Reactive**: Changes trigger events automatically
+- **Nested**: Supports deeply nested table structures
+
+## Usage
+
+### Server
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Mirra = require(ReplicatedStorage.Vendor.Mirra).server
+
+-- Create a data stream
+local stream = Mirra.New {
+    token = 'PlayerData',
+    meta = { version = 1 },
+    value = {
+        coins = 100,
+        inventory = {
+            sword = 1,
+            potion = 5,
+        },
+    },
+}
+
+-- Broadcast to all current and future players
+stream:BroadcastAll()
+
+-- Or broadcast to specific player
+stream:Broadcast(player)
+
+-- Modify data - automatically replicates
+stream.data.coins = 200
+stream.data.inventory.sword = 2
+```
+
+### Client
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Mirra = require(ReplicatedStorage.Vendor.Mirra).client
+
+-- Wait for stream to be broadcast
+local stream = Mirra.Get('PlayerData')
+
+-- Observe specific key changes
+Mirra.HookUpdate(stream.data, 'coins', function(value, old)
+    print('Coins changed:', old, '->', value)
+end)
+
+-- Observe new keys being added
+Mirra.OnAdded(stream.data, function(key, value)
+    print('New item:', key, value)
+end)
+
+-- Observe keys being removed
+Mirra.OnRemoved(stream.data, function(key, old)
+    print('Removed:', key, old)
+end)
+```
+
+## API Reference
+
+### Server API
+
+#### `Mirra.New(config: { token: string, meta: any?, value: table }): ServerStream`
+
+Creates a new data stream.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `token` | `string` | Unique identifier for this stream |
+| `meta` | `any?` | Optional metadata sent with initial broadcast |
+| `value` | `table` | Initial data value (must be a table) |
+
+#### `ServerStream:Broadcast(plr: Player)`
+
+Sends full initial state to a player and adds them as subscriber.
+
+#### `ServerStream:BroadcastAll()`
+
+Broadcasts to all current players and any future joiners.
+
+#### `ServerStream:Unbroadcast(plr: Player)`
+
+Removes player from subscribers and notifies their client.
+
+#### `ServerStream:UnbroadcastAll()`
+
+Clears all subscribers and stops broadcasting.
+
+#### `ServerStream:Destroy()`
+
+Destroys the stream, notifies all subscribers, cleans up registries.
+
+#### `ServerStream:Dump(): table`
+
+Returns a deep plain-table copy of current data.
+
+### Client API
+
+#### `Mirra.Get(token: string): Stream`
+
+Yields until the first stream with the given token is broadcast.
+
+#### `Mirra.GetAll(token: string): { Stream }`
+
+Returns all currently live streams for the token (non-yielding).
+
+#### `Mirra.OnBroadcastAdded(token: string, callback: (stream) -> ()): Connection`
+
+Subscribes to every future stream arrival for the token.
+
+#### `Mirra.OnBroadcastRemoved(token: string, callback: (stream) -> ()): Connection`
+
+Subscribes to every stream removal for the token.
+
+### Shared API (Both Sides)
+
+#### `Mirra.HookUpdate(tbl: ObserveTable, key: string, callback: (value, old) -> ()): Connection`
+
+Calls callback when the specified key changes.
+
+#### `Mirra.OnAdded(tbl: ObserveTable, callback: (key, value) -> ()): Connection`
+
+Calls callback when a new key is added to the table.
+
+#### `Mirra.OnRemoved(tbl: ObserveTable, callback: (key, old) -> ()): Connection`
+
+Calls callback when a key is removed from the table.
+
+## Example: Player Stats System
+
+```luau
+-- Server
+local function setupPlayer(plr: Player)
+    local stats = Mirra.New {
+        token = 'Stats_' .. plr.UserId,
+        value = {
+            health = 100,
+            mana = 50,
+            level = 1,
+        },
+    }
+    stats:Broadcast(plr)
+
+    -- Simulate level up
+    task.delay(5, function()
+        stats.data.level = 2
+        stats.data.health = 150
+    end)
+end
+
+-- Client
+local function onStatsReceived()
+    local stream = Mirra.Get('Stats_' .. Players.LocalPlayer.UserId)
+
+    Mirra.HookUpdate(stream.data, 'health', function(newHealth)
+        updateHealthBar(newHealth)
+    end)
+
+    Mirra.HookUpdate(stream.data, 'level', function(newLevel)
+        showLevelUpEffect(newLevel)
+    end)
+end
+```
+
+## Important Notes
+
+- Tables cannot be shared across multiple streams
+- Values must be valid for replication (no NaN, inf, non-UTF8 strings, or cycles)
+- Reserved keys (`__raw`, `__id`, `changed`, `destroy`) cannot be assigned
+- Streams auto-clean when players leave (server) or broadcast ends (client)

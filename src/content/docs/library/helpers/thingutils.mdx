@@ -1,0 +1,100 @@
+---
+title: ThingUtils
+description: Utility functions for identifying and classifying "things" (items and units).
+---
+
+ThingUtils provides helper functions to determine the type/kind of game objects based on their configuration entries in `ItemsConfig` and `UnitConfig`.
+
+## Overview
+
+When working with game entities that could be either items or units, ThingUtils offers a unified way to identify what kind of thing you're dealing with. This is useful for polymorphic UI components, inventory systems, and reward handling.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local ThingUtils = require(ReplicatedStorage.Helper.ThingUtils)
+
+-- Check basic kind
+local kind = ThingUtils.Kind('Gojo (Final)')  -- Returns 'Unit'
+local itemKind = ThingUtils.Kind('Coins')       -- Returns 'Item'
+local unknown = ThingUtils.Kind('NonExistent')  -- Returns 'Unknown'
+
+-- Check detailed kind (distinguishes Item vs ItemModel)
+local detailed = ThingUtils.DetailedKind('Sword')
+-- Returns 'ItemModel' if item has Model.Obj defined
+-- Returns 'Item' if no model
+-- Returns 'Unit' if it's a unit
+-- Returns 'Unknown' if not found in any config
+```
+
+## API Reference
+
+### `Kind(name: string): 'Item' | 'Unit' | 'Unknown'`
+
+Determines the basic type of a thing by checking config registries.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `string` | The name of the thing to look up |
+
+**Returns:**
+- `'Unit'` - Found in `UnitConfig`
+- `'Item'` - Found in `ItemsConfig`
+- `'Unknown'` - Not found in either config
+
+**Example:**
+```luau
+local function getIconPath(thingName: string): string
+    local kind = ThingUtils.Kind(thingName)
+    if kind == 'Unit' then
+        return `icons/units/{thingName}.png`
+    elseif kind == 'Item' then
+        return `icons/items/{thingName}.png`
+    end
+    return 'icons/unknown.png'
+end
+```
+
+### `DetailedKind(name: string): 'Item' | 'ItemModel' | 'Unit' | 'Unknown'`
+
+Determines the detailed type, distinguishing between static items and items with 3D models.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `string` | The name of the thing to look up |
+
+**Returns:**
+- `'Unit'` - Found in `UnitConfig`
+- `'ItemModel'` - Found in `ItemsConfig` with `Model.Obj` defined
+- `'Item'` - Found in `ItemsConfig` without a model
+- `'Unknown'` - Not found in either config
+
+**Example:**
+```luau
+local function createDisplay(thingName: string)
+    local kind = ThingUtils.DetailedKind(thingName)
+
+    if kind == 'Unit' or kind == 'ItemModel' then
+        -- Use ViewportFrame for 3D display
+        return ViewportDisplay.new(thingName)
+    elseif kind == 'Item' then
+        -- Use ImageLabel for static icon
+        return ImageDisplay.new(thingName)
+    else
+        -- Fallback placeholder
+        return PlaceholderDisplay.new(thingName)
+    end
+end
+```
+
+## Integration with ThingDisplay
+
+ThingUtils is the foundation for the `ThingDisplay` component. When displaying an item, use `DetailedKind` to determine the appropriate visual representation:
+
+```luau
+local kind = ThingUtils.DetailedKind(itemName)
+local display = ThingDisplay(Vide.source(itemName), {
+    StateThingKind = Vide.source(kind),
+})
+```

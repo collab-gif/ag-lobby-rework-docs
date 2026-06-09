@@ -1,0 +1,171 @@
+---
+title: VideHelper
+description: Vide reactive UI cleanup utilities for proper resource disposal
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+VideHelper provides cleanup utilities that integrate with the Vide reactive UI framework. It handles proper disposal of functions, instances, connections, and threads within Vide's reactive scopes.
+
+## Usage
+
+### Basic Cleanup
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local VideHelper = require(ReplicatedStorage.Vendor.VideHelper)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+-- In a Vide component
+local function MyComponent(props)
+    local connection = RunService.RenderStepped:Connect(function()
+        -- some work
+    end)
+    
+    -- Ensure cleanup when component unmounts
+    VideHelper.clean(connection)
+    
+    return Vide.create 'Frame' {
+        -- component contents
+    }
+end
+```
+
+### Function Cleanup
+
+```lua
+local VideHelper = require(ReplicatedStorage.Vendor.VideHelper)
+
+-- Register a cleanup function
+VideHelper.clean(function()
+    print('Component unmounting, cleaning up...')
+    -- Release resources, disconnect things, etc.
+end)
+```
+
+### Instance Destruction
+
+```lua
+local VideHelper = require(ReplicatedStorage.Vendor.VideHelper)
+
+-- Track an instance for cleanup
+local tempPart = Instance.new('Part')
+tempPart.Anchored = true
+tempPart.Position = Vector3.new(0, 10, 0)
+tempPart.Parent = workspace
+
+VideHelper.clean(tempPart)
+-- Part will be destroyed when scope cleans up
+```
+
+### Connection Disposal
+
+```lua
+local VideHelper = require(ReplicatedStorage.Vendor.VideHelper)
+
+-- RBXScriptConnections need special handling
+local signal = Instance.new('BindableEvent')
+local connection = signal.Event:Connect(function(value)
+    print('Received:', value)
+end)
+
+VideHelper.clean(connection)
+-- Connection will be disconnected on cleanup
+```
+
+### Thread Cancellation
+
+```lua
+local VideHelper = require(ReplicatedStorage.Vendor.VideHelper)
+
+-- Track a running thread
+local thread = task.spawn(function()
+    while true do
+        print('Working...')
+        task.wait(1)
+    end
+end)
+
+VideHelper.clean(thread)
+-- Thread will be cancelled if still running when scope ends
+```
+
+### Complete Component Example
+
+```lua
+local VideHelper = require(ReplicatedStorage.Vendor.VideHelper)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+local function AutoUpdatingLabel(props)
+    local text = Vide.source('Initial')
+    
+    -- Set up polling that auto-cleans
+    local pollThread = task.spawn(function()
+        while true do
+            text(fetchLatestValue())
+            task.wait(5)
+        end
+    end)
+    VideHelper.clean(pollThread)
+    
+    -- Track connection
+    local conn = props.signal.Event:Connect(function(newText)
+        text(newText)
+    end)
+    VideHelper.clean(conn)
+    
+    -- Return reactive label
+    return Vide.create 'TextLabel' {
+        Text = text,
+        Size = UDim2.fromOffset(200, 50),
+    }
+end
+```
+
+## API Reference
+
+### clean
+
+```lua
+function VideHelper.clean(thing: Function | Instance | RBXScriptConnection | thread)
+```
+
+Registers an object for cleanup within the current Vide scope.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `thing` | `function` | Cleanup function to call on unmount |
+| `thing` | `Instance` | Instance to destroy on unmount |
+| `thing` | `RBXScriptConnection` | Connection to disconnect on unmount |
+| `thing` | `thread` | Thread to cancel on unmount |
+
+**Behavior by type:**
+- **Function**: Called directly via `Vide.cleanup(thing)`
+- **Instance**: Destroyed via `Vide.cleanup(thing)`
+- **RBXScriptConnection**: Wrapped in cleanup function that calls `:Disconnect()`
+- **Thread**: Wrapped in cleanup function that calls `task.cancel(thing)` if not dead
+
+## Integration with Vide
+
+VideHelper is a thin wrapper around Vide's built-in `cleanup` function that handles type-specific disposal logic:
+
+```lua
+-- Vide's native cleanup (requires function)
+Vide.cleanup(function()
+    instance:Destroy()
+end)
+
+-- VideHelper handles the wrapping
+VideHelper.clean(instance)
+```
+
+## Best Practices
+
+- **Call `clean` immediately after creation** — don't delay cleanup registration
+- **Use for all external resources** — connections, spawned threads, temporary instances
+- **Prefer over manual cleanup** — Vide handles the lifecycle automatically
+- **Works inside `Vide.root`** — cleanup triggers when root scope ends
+- **Combine with Vide sources** — reactive updates plus automatic cleanup
+- **For complex cleanup** — pass a function: `VideHelper.clean(function() ... end)`

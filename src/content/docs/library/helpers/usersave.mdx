@@ -1,0 +1,110 @@
+---
+title: UserSave
+description: Client-side user data access and save/load helpers.
+---
+
+UserSave provides access to the client-side data system for retrieving and working with saved user data.
+
+## Overview
+
+UserSave is a thin wrapper around `SaveCS` (Client-Side Save system) that returns the current user's save data. This module is the entry point for accessing persistent player data on the client.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UserSave = require(ReplicatedStorage.Helper.UserSave)
+
+-- Access user data
+local save = UserSave
+
+-- Read specific fields
+local level = save.Main.Level
+local coins = save.Main.Coins
+
+-- Access nested data
+local expMax = save.Main.EXP.Max
+local expCurrent = save.Main.EXP.Val
+```
+
+## API Reference
+
+UserSave exports the result of `SaveCS.Get()`, which returns a table with the following structure:
+
+### Data Structure
+
+```luau
+{
+    Main = {
+        Level = number,
+        Coins = number,
+        Gems = number,
+        EXP = {
+            Val = number,   -- Current EXP
+            Max = number,   -- EXP needed for next level
+        },
+        -- Additional fields based on your save schema
+    },
+    -- Other save categories
+}
+```
+
+### Integration with ClientState
+
+UserSave is typically accessed through `ClientState` for reactive UI updates:
+
+```luau
+local ClientState = require(ReplicatedStorage.Modules.ClientState)
+
+-- Access reactive atoms bound to save data
+local levelAtom = ClientState.Level
+local expValAtom = ClientState.EXP.Val
+local expMaxAtom = ClientState.EXP.Max
+
+-- Read current values
+local currentLevel = levelAtom()
+
+-- Use in Vide reactive context
+Vide.effect(function()
+    local level = levelAtom()
+    levelLabel.Text = `Level {level}`
+end)
+```
+
+### Raw Save Access
+
+For non-reactive access or custom data binding:
+
+```luau
+local UserSave = require(ReplicatedStorage.Helper.UserSave)
+local CharmUtils = require(ReplicatedStorage.Vendor.CharmUtils)
+
+-- Bind any save field to an atom
+local cleanup, coinsAtom = CharmUtils.useDataValue(UserSave.Main, 'Coins')
+
+-- cleanup is a function to disconnect the binding
+-- coinsAtom is a reactive Charm atom
+
+-- Clean up when done
+cleanup()
+```
+
+## Save Categories
+
+The save data is organized into categories:
+
+| Category | Description |
+|----------|-------------|
+| `Main` | Core player stats (Level, Coins, Gems, EXP) |
+| `Inventory` | Items and units owned |
+| `Settings` | User preferences |
+
+Access any category directly:
+
+```luau
+local UserSave = require(ReplicatedStorage.Helper.UserSave)
+
+local main = UserSave.Main
+local inventory = UserSave.Inventory
+local settings = UserSave.Settings
+```

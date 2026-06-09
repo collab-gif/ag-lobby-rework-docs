@@ -1,0 +1,84 @@
+---
+title: GetRigFromChar
+description: Character-to-rig conversion utility that extracts essential rig components from a character model.
+---
+
+Extracts the rig components (HumanoidRootPart, Humanoid, Animator) from a Roblox character model into a typed structure for easier access.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local getRig = require(ReplicatedStorage.Vendor.GetRigFromChar)
+
+local rig = getRig(character)
+if rig then
+    print('Root part:', rig.root)
+    print('Humanoid:', rig.hum)
+    print('Animator:', rig.animator)
+end
+```
+
+## API Reference
+
+### `getRig(char: Model): Rig?`
+
+Extracts rig components from a character model.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `char` | `Model` | The character model to extract rig from |
+
+Returns a `Rig` table if successful, `nil` if the character lacks required components.
+
+## Rig Type
+
+```luau
+export type Rig = {
+    char: Model & {
+        HumanoidRootPart: Part,
+        Humanoid: Humanoid & {
+            Animator: Animator,
+        },
+        Head: Part,
+        LeftHand: Part,
+        RightHand: Part,
+        LeftFoot: Part,
+        RightFoot: Part,
+        LeftUpperArm: Part,
+        RightUpperArm: Part,
+        LeftLowerArm: Part,
+        RightLowerArm: Part,
+        LeftUpperLeg: Part,
+        RightUpperLeg: Part,
+        LeftLowerLeg: Part,
+        RightLowerLeg: Part,
+    },
+    root: Part,
+    hum: Humanoid,
+    animator: Animator,
+}
+```
+
+## Example
+
+```luau
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local getRig = require(ReplicatedStorage.Vendor.GetRigFromChar)
+
+local function onCharacterAdded(char: Model)
+    local rig = getRig(char)
+    if not rig then return end
+
+    -- Access rig components directly
+    rig.hum.WalkSpeed = 16
+    rig.hum.JumpPower = 50
+
+    -- Play an animation
+    local track = rig.animator:LoadAnimation(animation)
+    track:Play()
+end
+
+Players.LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+```

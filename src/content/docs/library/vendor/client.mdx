@@ -1,0 +1,147 @@
+---
+title: Client
+description: Player and character singleton with automatic caching and respawn handling
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+Client provides a singleton pattern for accessing player-related instances. It caches `LocalPlayer`, `Character`, `Humanoid`, `HumanoidRootPart`, `Head`, `Animator`, and `CurrentCamera` — automatically updating on respawn.
+
+## Usage
+
+### Basic Setup
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Client = require(ReplicatedStorage.Vendor.Client)
+
+-- Initialize once at script start
+local client = Client.init()
+
+-- Access cached values
+local player = client.plr
+local character = client.char
+local humanoid = client.hum
+local rootPart = client.root
+local head = client.head
+local animator = client.animator
+local camera = client.cam
+```
+
+### Waiting for Load
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Client = require(ReplicatedStorage.Vendor.Client)
+
+local client = require(ReplicatedStorage.Vendor.Client)
+
+-- Block until fully loaded
+client.init()
+
+-- Or use init() return
+local cached = Client.init()
+print('Player loaded:', cached.plr.Name)
+```
+
+### Reacting to Respawn
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Client = require(ReplicatedStorage.Vendor.Client)
+
+local client = Client.init()
+
+-- Fired every time character respawns
+client.onUpdate:Connect(function()
+    print('Character respawned!')
+    print('New humanoid:', client.hum)
+end)
+
+-- Fired once on initial load + respawns
+client.onLoaded:Connect(function()
+    print('Ready to play!')
+end)
+```
+
+### Ground Detection
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Client = require(ReplicatedStorage.Vendor.Client)
+
+local client = Client.init()
+
+RunService.Heartbeat:Connect(function()
+    if client.isOnGround then
+        -- Player is on solid ground
+    end
+end)
+```
+
+## API Reference
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `plr` | `Player` | The LocalPlayer |
+| `char` | `Model` | Current character model |
+| `hum` | `Humanoid` | Character's Humanoid |
+| `root` | `BasePart` | HumanoidRootPart |
+| `head` | `BasePart` | Head part |
+| `animator` | `Animator` | Humanoid's Animator |
+| `cam` | `Camera` | CurrentCamera (updates if camera changes) |
+| `isOnGround` | `boolean` | True if FloorMaterial is not Air |
+| `isLoaded` | `boolean` | True if all instances exist and are valid |
+
+### Signals
+
+| Signal | Fired When |
+|--------|------------|
+| `onUpdate` | Character respawns |
+| `onLoaded` | Initial load complete and each respawn |
+
+### Methods
+
+```lua
+function Client.init(): Client
+```
+
+Initializes the singleton and returns the client table. Safe to call multiple times — subsequent calls return cached data immediately.
+
+| Return | Description |
+|--------|-------------|
+| `Client` | The singleton client table |
+
+## How It Works
+
+1. **Initial capture**: On first `init()`, waits for Character and validates all expected children
+2. **Respawn handling**: `CharacterAdded` listener updates all cached references
+3. **Ground detection**: FloorMaterial changes update `isOnGround` through Janitor-managed connections
+4. **Camera tracking**: `CurrentCamera` changes update the `cam` reference
+5. **Existence validation**: `Heartbeat` checks all instances are still in the DataModel
+
+## Best Practices
+
+- **Call `init()` once per script** at the top, not inside functions
+- **Never cache individual properties** — always access through `client.xxx`
+- **Check `isLoaded`** before relying on cached values in edge cases
+- **Use `onUpdate` for respawn cleanup** — old connections won't work on new character
+- **Combine with Janitor** for per-character cleanup patterns:
+
+```lua
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+
+local bucket = Janitor.new()
+
+client.onUpdate:Connect(function()
+    bucket:Cleanup() -- Clear old character connections
+    
+    -- Setup new character stuff
+    bucket:Add(client.hum.Died:Connect(onDied))
+    bucket:Add(client.hum.HealthChanged:Connect(onHealthChanged))
+end)
+```

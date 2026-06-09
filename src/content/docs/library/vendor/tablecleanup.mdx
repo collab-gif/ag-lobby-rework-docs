@@ -1,0 +1,175 @@
+---
+title: TableCleanup
+description: Table memory cleanup utilities for diffing and merging data structures
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+TableCleanup provides utilities for comparing and merging tables, useful for network data synchronization, state diffing, and memory-efficient table operations. It performs deep comparison and selective cleanup of unchanged data.
+
+## Usage
+
+### Fill Missing Data
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local TableCleanup = require(ReplicatedStorage.Vendor.TableCleanup)
+
+local template = {
+    name = 'Unknown',
+    stats = {
+        health = 100,
+        mana = 50
+    }
+}
+
+local incoming = {
+    name = 'Player1',
+    -- stats missing, will be filled from template
+}
+
+-- Fill missing fields from template
+local merged = TableCleanup.fill(incoming, template)
+-- Result: { name = 'Player1', stats = { health = 100, mana = 50 } }
+```
+
+### Clean Unchanged Data
+
+```lua
+local TableCleanup = require(ReplicatedStorage.Vendor.TableCleanup)
+
+local current = {
+    name = 'Player1',
+    level = 10,
+    inventory = { 'sword', 'shield' }
+}
+
+local new = {
+    name = 'Player1',  -- same
+    level = 11,        -- changed
+    inventory = { 'sword', 'shield' }  -- same
+}
+
+-- Remove fields that match between current and new
+local diff = TableCleanup.clean(new, current)
+-- Result: { level = 11 } (unchanged fields removed)
+```
+
+### Network Data Optimization
+
+```lua
+local TableCleanup = require(ReplicatedStorage.Vendor.TableCleanup)
+
+-- Server: Only send changed fields
+function syncPlayerData(player, newData)
+    local lastData = playerData[player] or {}
+    
+    -- Remove unchanged fields before sending
+    local delta = TableCleanup.clean(table.clone(newData), lastData)
+    
+    -- Send minimal update
+    remoteEvent:FireClient(player, delta)
+    
+    -- Store for next comparison
+    playerData[player] = table.clone(newData)
+end
+
+-- Client: Merge delta with existing state
+function onPlayerDataReceived(delta)
+    local current = localPlayerData
+    local merged = TableCleanup.fill(delta, current)
+    localPlayerData = merged
+end
+```
+
+### Configuration Merging
+
+```lua
+local TableCleanup = require(ReplicatedStorage.Vendor.TableCleanup)
+
+local DEFAULT_CONFIG = {
+    enabled = true,
+    settings = {
+        volume = 0.5,
+        quality = 'High'
+    }
+}
+
+function loadUserConfig(savedConfig)
+    -- Ensure all defaults exist while preserving user changes
+    return TableCleanup.fill(savedConfig or {}, DEFAULT_CONFIG)
+end
+```
+
+## API Reference
+
+### fill
+
+```lua
+function TableCleanup.fill(data: table, template: table): table
+```
+
+Recursively fills missing fields in `data` from `template`. Modifies and returns `template` (not a new table).
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `table` | Source data with potentially missing fields |
+| `template` | `table` | Base structure to fill into |
+
+| Return | Type | Description |
+|--------|------|-------------|
+| `filled` | `table` | The template with data merged in |
+
+**Behavior:**
+- For each key in `data`, if `template` has the key and both values are tables, recurses
+- If `template` lacks the key, copies from `data`
+- Primitive values in `data` overwrite `template`
+- Returns the modified `template` (not a copy)
+
+### clean
+
+```lua
+function TableCleanup.clean(data: table, template: table): table
+```
+
+Removes fields from `data` that match the corresponding values in `template`. Performs deep comparison for nested tables.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `table` | Data to clean (modified in place) |
+| `template` | `table` | Reference to compare against |
+
+| Return | Type | Description |
+|--------|------|-------------|
+| `cleaned` | `table` | `data` with matching fields removed |
+
+**Behavior:**
+- If `data[key]` equals `template[key]`, sets `data[key] = nil`
+- For tables, performs deep equality check
+- Only removes if template has the key (keys only in data are preserved)
+- Modifies `data` in place and returns it
+
+## Deep Equality
+
+The `clean` function uses internal deep comparison:
+
+```lua
+-- These are considered equal (removed by clean):
+{ a = 1, b = { c = 2 } }
+{ a = 1, b = { c = 2 } }
+
+-- These are different (preserved by clean):
+{ a = 1, b = { c = 2 } }
+{ a = 1, b = { c = 3 } }
+```
+
+## Best Practices
+
+- **Use `fill` for configuration loading** — ensures all required fields exist
+- **Use `clean` before network sends** — reduces payload size by removing unchanged data
+- **Clone before `clean`** if you need to preserve original: `TableCleanup.clean(table.clone(data), template)`
+- **Both functions mutate the second argument** (`fill`) or first argument (`clean`)
+- **Not for reactive state** — use Charm atoms for UI state, this is for data processing
+- **Table keys are iterated** — behavior with non-string keys follows standard Lua iteration order

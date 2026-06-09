@@ -1,0 +1,192 @@
+---
+title: Spring
+description: Quenty-style damped harmonic oscillator spring for scalar value animations
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+Spring provides a damped harmonic oscillator implementation for smooth scalar value animations. It uses fixed-timestep semi-implicit Euler integration for stable physics simulation with configurable frequency and damping ratio.
+
+Unlike the Spr library, this Spring implementation offers direct control over physics parameters and manual update control.
+
+## Usage
+
+### Basic Spring Animation
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Spring = require(ReplicatedStorage.Vendor.Spring)
+
+-- Create a spring with initial value, frequency, and damping
+local spring = Spring.new(0, 2, 0.8)
+
+-- Set target and run animation
+spring:setTarget(100)
+spring:run()
+
+-- Read current position each frame
+RunService.RenderStepped:Connect(function()
+    print('Current value:', spring.position)
+end)
+```
+
+### UI Element Animation
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Spring = require(ReplicatedStorage.Vendor.Spring)
+local RunService = game:GetService('RunService')
+
+local button = script.Parent
+local spring = Spring.new(1, 3, 0.7) -- scale from 1, fast response, slight overshoot
+
+local uiScale = Instance.new('UIScale')
+uiScale.Parent = button
+
+-- Animate on hover
+button.MouseEnter:Connect(function()
+    spring:setTarget(1.1)
+    spring:run()
+end)
+
+button.MouseLeave:Connect(function()
+    spring:setTarget(1)
+    spring:run()
+end)
+
+RunService.RenderStepped:Connect(function()
+    uiScale.Scale = spring.position
+end)
+```
+
+### Impulse for Bounce Effects
+
+```lua
+local Spring = require(ReplicatedStorage.Vendor.Spring)
+
+local spring = Spring.new(0, 2, 0.4) -- low damping for bounce
+
+-- Apply sudden velocity for bounce effect
+button.Activated:Connect(function()
+    spring:impulse(50)
+    spring:run(0.5) -- run for 0.5 seconds
+end)
+```
+
+### Timed Animation with Cleanup
+
+```lua
+local Spring = require(ReplicatedStorage.Vendor.Spring)
+
+local spring = Spring.new(0, 1, 1)
+
+-- Animate for exactly 2 seconds then auto-stop
+spring:setTarget(360)
+spring:run(2)
+
+-- Or manual control
+spring:run()
+task.wait(1)
+spring:stop()
+```
+
+## API Reference
+
+### Constructor
+
+```lua
+function Spring.new(initial: number, frequency: number?, damping: number?): Spring
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `initial` | `number` | required | Starting position value |
+| `frequency` | `number?` | `1` | Oscillation frequency (higher = faster) |
+| `damping` | `number?` | `1` | Damping ratio (`<1` = underdamped/bouncy, `=1` = critically damped, `>1` = overdamped) |
+
+### Methods
+
+#### setTarget
+
+```lua
+function Spring:setTarget(target: number)
+```
+
+Sets the target position the spring will move toward.
+
+#### impulse
+
+```lua
+function Spring:impulse(velocity: number)
+```
+
+Adds instantaneous velocity to the spring for bounce/jolt effects.
+
+#### update
+
+```lua
+function Spring:update(dt: number)
+```
+
+Manually advance the simulation by `dt` seconds. Used for fixed-timestep integration.
+
+#### run
+
+```lua
+function Spring:run(duration: number?)
+```
+
+Starts the automatic simulation loop. Optionally auto-stops after `duration` seconds.
+
+#### stop
+
+```lua
+function Spring:stop()
+```
+
+Stops the automatic simulation loop.
+
+#### reset
+
+```lua
+function Spring:reset(position: number)
+```
+
+Resets spring to a position with zero velocity. Target also updates to this position.
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `position` | `number` | Current spring position |
+| `velocity` | `number` | Current spring velocity |
+| `target` | `number` | Target position the spring moves toward |
+| `frequency` | `number` | Oscillation frequency |
+| `damping` | `number` | Damping ratio |
+
+## Spring Physics Parameters
+
+### Frequency
+
+Controls how fast the spring responds to target changes:
+- `0.5` - Slow, heavy feel
+- `2` - Quick, responsive
+- `5` - Very fast, snappy
+
+### Damping Ratio
+
+Controls oscillation behavior:
+- `< 1` (0.4-0.7) - Underdamped: bounces before settling
+- `= 1` - Critically damped: fastest settling without overshoot
+- `> 1` (1.2-2) - Overdamped: slow, heavy, no overshoot
+
+## Best Practices
+
+- **Use `run(duration)` for one-shot animations** — automatically stops to save performance
+- **Use `impulse()` for reactive feedback** — button presses, impacts, notifications
+- **Match frequency to UI feel** — buttons need fast response (~3), large panels can be slower (~1)
+- **Read `spring.position` on RenderStepped** — only access when needed, not every frame if unnecessary
+- **Call `stop()` when hidden** — springs continue running until stopped or garbage collected
+- **Prefer higher damping for production UI** — slight overshoot looks playful but can feel unpolished

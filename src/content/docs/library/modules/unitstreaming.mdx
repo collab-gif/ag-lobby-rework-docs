@@ -1,0 +1,118 @@
+---
+title: UnitStreaming
+description: Async unit model loading with caching and cleanup support.
+---
+
+UnitStreaming handles loading unit models from server to client with automatic caching and reactive integration.
+
+## Overview
+
+UnitStreaming provides:
+- Async model loading with request queue
+- Automatic model caching
+- Reactive loading via Charm atoms
+- Storybook/Studio compatibility
+
+## Usage
+
+### Loading a Unit Model
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UnitStreaming = require(ReplicatedStorage.Modules.UnitStreaming)
+
+-- Request single model (async)
+local model = UnitStreaming.RequestModel('Gojo (Final)')
+if model then
+    local clone = model:Clone()
+    clone.Parent = workspace
+end
+```
+
+### Reactive Unit Loading
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UnitStreaming = require(ReplicatedStorage.Modules.UnitStreaming)
+local Charm = require(ReplicatedStorage.Packages.Charm)
+local Sweep = require(ReplicatedStorage.Vendor.Sweep)
+
+local selected_unit = Charm.atom('Gojo (Final)')
+
+-- Load unit reactively
+local cleanup = UnitStreaming.LoadModel(selected_unit, function(model)
+    -- Called when model loads
+    model:PivotTo(CFrame.new(0, 10, 0))
+    model.Parent = workspace
+
+    -- Return cleanup for when unit changes/unloads
+    return function()
+        model:Destroy()
+    end
+end)
+
+-- Change selection triggers reload
+task.delay(5, function()
+    selected_unit('Sukuna (Final)')
+end)
+
+-- Cleanup when done
+task.delay(10, function()
+    cleanup()
+end)
+```
+
+### Using in Vide Components
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UnitStreaming = require(ReplicatedStorage.Modules.UnitStreaming)
+local Sweep = require(ReplicatedStorage.Vendor.Sweep)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+local function UnitViewport(props)
+    local unit_name = props.unit_name
+
+    return Sweep.effect_root(function(_, clean)
+        Sweep.async(function()
+            local model = UnitStreaming.RequestModel(unit_name())
+            if not model then return end
+
+            local clone = model:Clone()
+            clean:Add(clone)
+
+            -- Setup viewport...
+        end)
+    end)
+end
+```
+
+## API Reference
+
+### Functions
+
+| Function | Parameters | Returns | Description |
+|----------|------------|---------|-------------|
+| `RequestModel` | `name: string` | `Model?` | Load unit model (yields) |
+| `LoadModel` | `unit_name: Charm.Atom<string>, factory: (Model) -> Cleanup?` | `() -> ()` | Reactive model loader |
+
+### Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `ModelLoaded` | `name: string, model: Model?` | Fired when model finishes loading |
+
+### Caching
+
+Models are cached after first load. Subsequent requests return cached copy immediately. Cache persists for session lifetime.
+
+## Architecture
+
+1. **Client requests** model via Blink remote
+2. **Server streams** model to PlayerGui container
+3. **Client caches** model reference
+4. **Callbacks fire** when model available
+
+## Storybook Mode
+
+In UILabs storybook environment, loads directly from ServerStorage.UnitModels without network round-trip.

@@ -1,0 +1,234 @@
+---
+title: UIUtils
+description: Helper utilities for layout, sizing, positioning, and styling UI components.
+---
+
+UIUtils provides common UI helper functions for creating consistent layouts, aspect ratio handling, and styling. Built on top of Vide for reactive UI creation.
+
+## Overview
+
+UIUtils contains factory functions that return Vide components for common UI elements like corners, padding, strokes, and layout constraints. These helpers standardize UI patterns across the project.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UIUtils = require(ReplicatedStorage.Helper.UIUtils)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+
+-- Create a rounded button with padding
+local button = Vide.create 'TextButton' {
+    Size = UDim2.fromOffset(200, 50),
+    UIUtils.corner(8),           -- 8px corner radius
+    UIUtils.padding(10, 10, 15, 15),  -- top, bottom, left, right
+    UIUtils.stroke(),            -- subtle white border
+    Text = 'Click Me',
+}
+
+-- Create a responsive container
+local container = Vide.create 'Frame' {
+    Size = UDim2.fromScale(1, 1),
+    UIUtils.container {},        -- centered with padding
+}
+```
+
+## API Reference
+
+### `corner(radius: number, scale: boolean?): UICorner`
+
+Creates a `UICorner` instance with the specified radius.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `radius` | `number` | required | Corner radius in pixels |
+| `scale` | `boolean?` | `false` | If true, scales radius based on viewport size |
+
+When `scale` is enabled, the corner radius automatically adjusts based on the parent's size relative to the viewport, maintaining visual consistency across different resolutions.
+
+```luau
+-- Fixed corner radius
+UIUtils.corner(8)
+
+-- Scaled corner radius (responsive)
+UIUtils.corner(16, true)
+```
+
+### `padding(u: number, d: number, l: number, r: number): UIPadding`
+
+Creates a `UIPadding` instance with specified padding values.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `u` | `number` | Top padding in pixels |
+| `d` | `number` | Bottom padding in pixels |
+| `l` | `number` | Left padding in pixels |
+| `r` | `number` | Right padding in pixels |
+
+```luau
+-- 10px top/bottom, 20px left/right
+UIUtils.padding(10, 10, 20, 20)
+
+-- Asymmetric padding
+UIUtils.padding(5, 15, 10, 10)
+```
+
+### `ratio(ratio: number, dominant_axis: Enum.DominantAxis?, props?): UIAspectRatioConstraint`
+
+Creates a `UIAspectRatioConstraint` to maintain element proportions.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `ratio` | `number` | required | Width/Height ratio (e.g., 1 = square, 16/9 = widescreen) |
+| `dominant_axis` | `Enum.DominantAxis?` | `Height` | Which axis controls the constraint |
+| `props` | `table?` | `{}` | Additional properties to merge |
+
+```luau
+-- Square constraint
+UIUtils.ratio(1)
+
+-- 16:9 widescreen, width-dominant
+UIUtils.ratio(16/9, Enum.DominantAxis.Width)
+```
+
+### `random_color(): Color3`
+
+Returns a random fully-saturated color for debugging purposes.
+
+```luau
+-- Debug visualization
+frame.BackgroundColor3 = UIUtils.random_color()
+```
+
+### `stroke(props?): UIStroke`
+
+Creates a `UIStroke` with default styling.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Color` | `Color3?` | `Color3.new(1, 1, 1)` | Stroke color |
+| `Thickness` | `number?` | `1` | Stroke thickness |
+| `Transparency` | `number?` | `0.9` | Stroke transparency |
+
+```luau
+-- Default subtle stroke
+UIUtils.stroke()
+
+-- Custom red stroke
+UIUtils.stroke({
+    Color = Color3.fromRGB(255, 100, 100),
+    Thickness = 2,
+    Transparency = 0.5,
+})
+```
+
+### `v_list(props?): UIListLayout`
+
+Creates a vertical `UIListLayout`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `VerticalFlex` | `Enum.UIFlexAlignment?` | Vertical flex behavior |
+| `HorizontalFlex` | `Enum.UIFlexAlignment?` | Horizontal flex behavior |
+| `VerticalAlignment` | `Enum.VerticalAlignment?` | Vertical alignment |
+| `HorizontalAlignment` | `Enum.HorizontalAlignment?` | Horizontal alignment |
+| `Padding` | `UDim?` | Padding between items |
+
+```luau
+UIUtils.v_list {
+    Padding = UDim.new(0, 8),
+    HorizontalAlignment = Enum.HorizontalAlignment.Center,
+}
+```
+
+### `h_list(props?): UIListLayout`
+
+Creates a horizontal `UIListLayout`.
+
+Same properties as `v_list`, but with `FillDirection = Horizontal`.
+
+```luau
+UIUtils.h_list {
+    Padding = UDim.new(0, 12),
+    VerticalAlignment = Enum.VerticalAlignment.Center,
+}
+```
+
+### `center(props?): table`
+
+Returns positioning properties to center an element.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `AnchorPoint` | `Vector2?` | `Vector2.new(0.5, 0.5)` | Element anchor point |
+| `Position` | `UDim2?` | `UDim2.fromScale(0.5, 0.5)` | Element position |
+
+```luau
+Vide.create 'Frame' {
+    UIUtils.center(),  -- Centers at 50%, 50%
+}
+
+-- Custom centering
+Vide.create 'Frame' {
+    UIUtils.center {
+        AnchorPoint = Vector2.new(0, 0.5),
+        Position = UDim2.fromScale(0, 0.5),
+    },
+}
+```
+
+### `debugger(global_enabled?): (enabled: boolean?) -> table`
+
+Returns a function that creates debug styling properties.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `global_enabled` | `boolean?` | `false` | Default enabled state |
+
+Returns a function that takes an `enabled` parameter and returns background styling:
+
+```luau
+local debug = UIUtils.debugger(false)
+
+-- Normal frame
+local frame = Vide.create 'Frame' {
+    debug(false),  -- Transparent background
+}
+
+-- Debug view
+local debugFrame = Vide.create 'Frame' {
+    debug(true),   -- Random color with transparency 0
+}
+```
+
+### `flex_item(flex_mode: Enum.UIFlexMode?): UIFlexItem`
+
+Creates a `UIFlexItem` for flex layout control.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `flex_mode` | `Enum.UIFlexMode?` | Flex growth/shrink behavior |
+
+```luau
+UIUtils.flex_item(Enum.UIFlexMode.Fill)
+UIUtils.flex_item(Enum.UIFlexMode.Shrink)
+```
+
+### `container(prop?): Frame`
+
+Creates a standard container frame with centering and padding built-in.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `prop` | `table?` | Additional properties to merge |
+
+Returns a Vide `Frame` with:
+- `BackgroundTransparency = 1`
+- `Size = UDim2.new(1, -20, 1, -20)` (full size minus 10px padding)
+- Center positioning
+
+```luau
+local content = UIUtils.container {
+    -- Add children here
+    Vide.create 'TextLabel' { Text = 'Hello' },
+}
+```

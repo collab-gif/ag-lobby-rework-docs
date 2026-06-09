@@ -1,0 +1,212 @@
+---
+title: Sweep
+description: Reactive scope wrapper for automatic cleanup management with Charm and Vide integration
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Overview
+
+Sweep is a reactive scope wrapper that combines Janitor's cleanup capabilities with Charm's effect system. It manages object lifecycles automatically within reactive scopes, making it the preferred cleanup solution for UI code over raw Janitor.
+
+Sweep tracks a stack of active scopes, allowing nested cleanup registration without passing janitor instances around.
+
+## Usage
+
+### Basic Root Scope
+
+```lua
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Sweep = require(ReplicatedStorage.Vendor.Sweep)
+
+-- Create a root scope with automatic cleanup
+local cleanup, janitor = Sweep.root(function(j)
+    -- Everything added to j is cleaned up when scope ends
+    local connection = game:GetService('RunService').RenderStepped:Connect(function()
+        print('Tick')
+    end)
+    j:Add(connection)
+    
+    -- Cloned instances are tracked
+    local gui = Sweep.clone(ReplicatedStorage.Assets.MyGui)
+    gui.Parent = LocalPlayer.PlayerGui
+end)
+
+-- Cleanup everything
+cleanup()
+```
+
+### Effect Root with Charm
+
+```lua
+local Sweep = require(ReplicatedStorage.Vendor.Sweep)
+local Charm = require(ReplicatedStorage.Packages.Charm)
+
+local isOpen = Charm.atom(false)
+
+-- Reactive scope that rebuilds when dependencies change
+Sweep.effect_root(function(initial, janitor)
+    if not isOpen() then
+        return -- Scope cleans up when isOpen becomes false
+    end
+    
+    -- Setup UI that exists only while isOpen is true
+    local gui = Sweep.clone(ReplicatedStorage.Assets.Popup)
+    gui.Parent = LocalPlayer.PlayerGui
+    
+    -- Track internal reactive updates
+    Sweep.effect(function()
+        gui.Title.Text = titleAtom()
+    end)
+end)
+```
+
+### Cleanup and Clone Helpers
+
+```lua
+local Sweep = require(ReplicatedStorage.Vendor.Sweep)
+
+Sweep.root(function(j)
+    -- Clone and auto-track a prefab
+    local button = Sweep.clone(ReplicatedStorage.Assets.Button)
+    button.Parent = someFrame
+    
+    -- Manually track any object
+    local tween = TweenService:Create(button, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 1, 0)})
+    Sweep.clean(tween, 'Destroy')
+    
+    -- Track effects that re-run on atom changes
+    Sweep.effect(function()
+        local count = itemCount()
+        button.Badge.Text = tostring(count)
+        button.Badge.Visible = count > 0
+    end)
+end)
+```
+
+### Async and Spawn
+
+```lua
+local Sweep = require(ReplicatedStorage.Vendor.Sweep)
+
+Sweep.root(function(j)
+    -- Defer cleanup-tracked async work
+    Sweep.async(function()
+        local result = fetchData()
+        -- Process result - automatically cleaned up
+    end)
+    
+    -- Spawn with cleanup tracking
+    Sweep.spawn(function()
+        for i = 1, 10 do
+            print(i)
+            task.wait(1)
+        end
+    end)
+end)
+```
+
+## API Reference
+
+### root
+
+```lua
+function Sweep.root(callback: (janitor: Janitor) -> ()): (Cleanup, Janitor)
+```
+
+Creates a new cleanup scope. Everything added inside the callback is cleaned up when the returned function is called.
+
+| Return | Type | Description |
+|--------|------|-------------|
+| `cleanup` | `() -> ()` | Function to destroy all tracked objects |
+| `janitor` | `Janitor` | The underlying janitor instance |
+
+### effect_root
+
+```lua
+function Sweep.effect_root(callback: (initial: boolean, janitor: Janitor) -> ())
+```
+
+Creates a reactive root scope tied to a Charm effect. The callback re-runs when any tracked atom changes, automatically cleaning up previous scope contents.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `initial` | `boolean` | `true` on first run, `false` on subsequent re-runs |
+| `janitor` | `Janitor` | Cleanup bucket for this effect iteration |
+
+### effect
+
+```lua
+function Sweep.effect(callback: () -> ())
+```
+
+Registers a Charm effect within the current Sweep scope. Automatically cleaned up when the scope ends.
+
+### clean
+
+```lua
+function Sweep.clean(object: OBJ, methodName: BooleanOrString?): OBJ
+```
+
+Tracks an object for cleanup within the current scope. Returns the object for chaining.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `object` | `Instance \| Function \| thread \| RBXScriptConnection \| Tween` | Object to track |
+| `methodName` | `boolean \| string?` | Cleanup method or `true` for `:Destroy()` |
+
+### clone
+
+```lua
+function Sweep.clone(object: OBJ): OBJ
+```
+
+Clones an instance and automatically tracks it for cleanup. Returns the clone.
+
+### cleanup
+
+```lua
+function Sweep.cleanup(object, methodName, index): Untrack
+```
+
+Low-level cleanup registration with optional index for manual removal.
+
+| Return | Type | Description |
+|--------|------|-------------|
+| `untrack` | `() -> ()` | Function to remove from cleanup without cleaning |
+
+### async
+
+```lua
+function Sweep.async(callback: (...) -> (), ...): Untrack
+```
+
+Defers callback execution via `task.defer` with automatic cleanup tracking.
+
+### spawn
+
+```lua
+function Sweep.spawn(callback: (...) -> (), ...): Untrack
+```
+
+Spawns callback via `task.spawn` with automatic cleanup tracking.
+
+## Why Sweep Over Janitor?
+
+| Use Case | Solution |
+|----------|----------|
+| Imperative cleanup (systems, services) | Use Janitor directly |
+| Reactive UI with Charm/Vide | Use Sweep |
+| Effects that rebuild on state change | Use `Sweep.effect_root` |
+| Simple scope without reactivity | Use `Sweep.root` |
+
+Sweep eliminates the need to pass janitor instances through component hierarchies. The internal stack tracks the active scope automatically.
+
+## Best Practices
+
+- **Always use `Sweep.effect_root` for UI lifecycles** — automatically handles cleanup when UI unmounts
+- **Use `Sweep.clone` over `instance:Clone()`** — ensures cleanup is tracked
+- **Nest `Sweep.effect` inside roots** — child effects are cleaned up when parent re-runs
+- **Don't yield in root callbacks** — use `Sweep.async` or `Sweep.spawn` instead
+- **Prefer over raw Janitor for UI** — less boilerplate, automatic scope management
+- **Root scopes are stack-based** — avoid deeply nested roots to prevent stack confusion

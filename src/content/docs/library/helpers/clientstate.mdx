@@ -1,0 +1,182 @@
+---
+title: ClientState
+description: Global client state management with Charm atoms for reactive UI and game state.
+---
+
+ClientState provides centralized reactive state management for the client using Charm atoms.
+
+## Overview
+
+ClientState exports a table of Charm atoms and computed values that represent the global client state. These atoms can be used with Vide for reactive UI updates or read directly for current values.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local ClientState = require(ReplicatedStorage.Modules.ClientState)
+local Vide = require(ReplicatedStorage.Packages.Vide)
+local Charm = require(ReplicatedStorage.Packages.Charm)
+
+-- Read current state
+local currentLevel = ClientState.Level()
+local hasToast = ClientState.HasToast()
+
+-- Reactive UI with Vide
+local levelLabel = Vide.create 'TextLabel' {
+    Vide.effect(function()
+        local level = ClientState.Level()
+        return { Text = `Level {level}` }
+    end),
+}
+
+-- Subscribe to changes
+local unsubscribe = Charm.effect(function()
+    print('Level changed:', ClientState.Level())
+end)
+
+-- Later: unsubscribe()
+```
+
+## API Reference
+
+### `Level: Atom<number>`
+
+Reactive atom containing the player's current level.
+
+```luau
+-- Read
+local level = ClientState.Level()
+
+-- In reactive context
+Charm.effect(function()
+    print('Player level:', ClientState.Level())
+end)
+```
+
+### `EXP: { Max: Atom<number>, Val: Atom<number> }`
+
+Table containing atoms for current and maximum EXP.
+
+| Atom | Description |
+|------|-------------|
+| `EXP.Val` | Current accumulated EXP |
+| `EXP.Max` | EXP required for next level |
+
+```luau
+-- Calculate progress percentage
+local progress = Charm.computed(function()
+    local current = ClientState.EXP.Val()
+    local max = ClientState.EXP.Max()
+    return if max > 0 then current / max else 0
+end)
+
+-- Use in UI bar
+Vide.create 'Frame' {
+    Size = function()
+        return UDim2.fromScale(progress(), 1)
+    end,
+}
+```
+
+### `ToastQueue: Atom<table>`
+
+Atom containing the queue of active toast notifications.
+
+```luau
+-- Check queue length
+local queue = ClientState.ToastQueue()
+local count = #queue
+
+-- Add toast (via notification system)
+-- ToastQueue is managed by the Notification controller
+```
+
+### `HasToast: Computed<boolean>`
+
+Computed value indicating whether there are any toasts in the queue.
+
+```luau
+-- Show/hide toast container based on queue
+local container = Vide.create 'Frame' {
+    Visible = function()
+        return ClientState.HasToast()
+    end,
+}
+```
+
+## Architecture
+
+ClientState atoms are bound to `UserSave` data through `CharmUtils.useDataValue`:
+
+```luau
+-- ClientState internals:
+local UserSave = require(ReplicatedStorage.Helper.UserSave)
+local CharmUtils = require(ReplicatedStorage.Vendor.CharmUtils)
+
+local function AsAtom(...)
+    local _clean, atom = CharmUtils.useDataValue(...)
+    return atom
+end
+
+return {
+    Level = AsAtom(UserSave.Main, 'Level'),
+    EXP = {
+        Max = AsAtom(UserSave.Main.EXP, 'Max'),
+        Val = AsAtom(UserSave.Main.EXP, 'Val'),
+    },
+    -- ...
+}
+```
+
+This means:
+- State updates automatically when save data changes
+- Server → Client sync is handled by the underlying data system
+- UI components react to state changes without manual polling
+
+## Best Practices
+
+### Do: Use atoms in reactive contexts
+
+```luau
+-- Good: Reactive Vide component
+Vide.create 'TextLabel' {
+    Text = function()
+        return `Level {ClientState.Level()}`
+    end,
+}
+```
+
+### Don't: Poll atoms in loops
+
+```luau
+-- Bad: Polling loop
+while true do
+    task.wait(0.1)
+    print(ClientState.Level())  -- Wasteful polling
+end
+
+-- Good: Reactive subscription
+Charm.effect(function()
+    print('Level:', ClientState.Level())  -- Only runs on change
+end)
+```
+
+### Do: Use computed for derived values
+
+```luau
+local canLevelUp = Charm.computed(function()
+    return ClientState.EXP.Val() >= ClientState.EXP.Max()
+end)
+```
+
+### Don't: Store atom values in local variables
+
+```luau
+-- Bad: Stale value
+local level = ClientState.Level()  -- Snapshot at load time
+
+-- Good: Always read from atom
+function getCurrentLevel()
+    return ClientState.Level()  -- Fresh value
+end
+```

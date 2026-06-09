@@ -1,0 +1,73 @@
+---
+title: Exp
+description: Player experience and level progression system.
+---
+
+Exp handles player experience calculation and level-up logic on the server.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Exp = require(ReplicatedStorage.Modules.Exp)
+
+-- Server-side only
+local result = Exp.AddExp(player, 500)
+if result then
+    print(`Level: {result.level}, EXP: {result.exp_val}/{result.exp_max}`)
+    if result.is_leveled_up then
+        print('Player leveled up!')
+    end
+end
+
+-- Calculate max EXP for a level
+local maxExp = Exp.ExpMaxFor(25)
+print(`Level 25 requires {maxExp} EXP`)
+```
+
+## Configuration
+
+```luau
+Exp.Base = 18.7        -- Base EXP value
+Exp.Exponent = 1.4     -- Growth curve exponent
+Exp.MaxLevel = 100     -- Maximum player level
+```
+
+## API Reference
+
+### `Exp.ExpMaxFor(level: number): number`
+
+Calculates the maximum EXP required for a given level.
+
+Formula: `floor(Base * max(level, 1) ^ Exponent)`
+
+### `Exp.AddExp(plr: Player, amount: number): {level, exp_val, exp_max, is_leveled_up}?`
+
+Adds EXP to a player, handling level-ups automatically.
+
+**Server-side only.** Requires `SaveSS` to be available.
+
+| Return Field | Type | Description |
+|--------------|------|-------------|
+| `level` | `number` | Current level after addition |
+| `exp_val` | `number` | Current EXP value |
+| `exp_max` | `number` | Max EXP for current level |
+| `is_leveled_up` | `boolean` | True if player leveled up |
+
+**Behavior:**
+- Loops for multiple level-ups if EXP exceeds threshold
+- Caps EXP at `max - 1` when at max level
+- Automatically saves to player's data store
+
+## Level Curve
+
+With default settings (Base=18.7, Exponent=1.4):
+
+| Level | Max EXP |
+|-------|---------|
+| 1 | 19 |
+| 10 | 374 |
+| 25 | 1,414 |
+| 50 | 3,894 |
+| 75 | 6,779 |
+| 100 | 9,933 |

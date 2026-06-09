@@ -1,0 +1,51 @@
+---
+title: Sounds
+description: Sound playback management system for game audio.
+---
+
+Sounds provides a simple interface for playing audio with automatic cleanup.
+
+## Usage
+
+```luau
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Sounds = require(ReplicatedStorage.Modules.Sounds)
+
+-- Play by Sound name from script storage
+local sound = Sounds.Play('ClickSound', playerGui)
+
+-- Play by asset ID
+local sound = Sounds.Play(123456789, workspace)
+
+-- Get Sound instance without playing
+local template = Sounds.Get('ClickSound')
+```
+
+## API Reference
+
+### `Sounds.Get(Sound: string): Sound?`
+
+Retrieves a Sound instance from the module's script storage by name. Returns `nil` if not found.
+
+### `Sounds.Play(sound: (Sound | number)?, Parent: Instance?): Sound`
+
+Plays a sound with automatic cleanup.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sound` | `Sound \| number \| nil` | Sound instance, asset ID, or nil |
+| `Parent` | `Instance?` | Parent for the sound (defaults to `workspace`) |
+
+**Behavior:**
+- If `sound` is a `number`: Creates new Sound with `rbxassetid://` prefix
+- If `sound` is a `Sound`: Clones the sound instance
+- If `sound` is `nil`: Returns `nil`
+- Sound auto-destroys after `Ended` event or 5-second timeout if not loaded
+
+## Auto-Cleanup
+
+Sounds are automatically cleaned up via:
+- `Sound.Ended` event connection
+- 5-second timeout for sounds that fail to load
+
+No manual cleanup required.
