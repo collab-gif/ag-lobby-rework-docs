@@ -21,7 +21,7 @@ export default defineConfig({
       sidebar: [
         {
           label: "Guide",
-          items: ["welcome"],
+          items: ["welcome", "architecture", "packages", "coding-guidelines"],
         },
         {
           label: "Library",

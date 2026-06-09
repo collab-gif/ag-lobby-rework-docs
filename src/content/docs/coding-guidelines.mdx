@@ -1,0 +1,199 @@
+---
+title: Coding Guidelines
+description: Code style, patterns, and conventions for LLM assistance.
+---
+
+## File Structure
+
+Every Luau module follows this scaffold:
+
+```luau
+--!strict
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+-------------------//MODULES//--------------------
+
+local Charm = require(ReplicatedStorage.Packages.Charm)
+
+------------------//VARIABLES//-------------------
+
+local class = {}
+
+------------------//FUNCTIONS//-------------------
+
+function class.DoSomething(): nil
+    -- implementation
+end
+
+---------------------//MAIN//---------------------
+
+return class
+```
+
+**Rules:**
+- `--!strict` at the top of every module
+- Services alphabetized, single-quoted
+- Four banner comments in fixed order: **MODULES → VARIABLES → FUNCTIONS → MAIN**
+- Module table named `class`
+
+## Naming Conventions
+
+| Scope | Convention | Examples |
+|-------|------------|----------|
+| Locals / params / private fns | `snake_case` | `comp_vpf`, `init_ripple`, `atom_head` |
+| Public methods / exported types | `PascalCase` | `class.Get`, `class.Register` |
+| Module constants | `SCREAMING_SNAKE_CASE` | `SPEED_RUN`, `NO_IMAGE` |
+
+**Prefixes:**
+- `atom_*` — Charm atoms
+- `prefab_*` or `*_prefab` — cloneable Instance refs
+- `comp_*` — Vide component-returning locals
+- `cleanup0`, `cleanup1` — numbered cleanup handles
+
+## Package Patterns
+
+### Charm (State Atoms)
+
+```luau
+local atom = Charm.atom(defaultValue)  -- create
+local value = atom()                   -- read
+atom(newValue)                         -- write
+local value = Charm.peek(atom)         -- read without tracking
+
+local stop = Charm.effect(function()   -- side effect
+    print(atom())
+end)
+
+-- Never destructure atoms. Always capture cleanup.
+```
+
+### Vide (Reactive UI)
+
+```luau
+local cleanup = Vide.cleanup
+local effect = Vide.effect
+local new = Vide.create
+
+local function MyComp(props)
+    return new 'Frame' {
+        BackgroundTransparency = 1,
+        Size = UDim2.fromScale(1, 1),
+        new 'TextLabel' { Text = 'hello' },
+    }
+end
+```
+
+### Janitor (Cleanup)
+
+```luau
+local bucket = Janitor.new()
+bucket:Add(connection)
+bucket:Add(instance, 'Destroy')
+-- Cleanup automatically on instance destroy
+```
+
+## Guard & Type Safety
+
+**Guard what may be absent. Trust what is present.**
+
+```luau
+-- Optional type — guard required:
+local userdata = DataSystemSS.Get(plr)
+if not userdata then return end
+local coins = userdata.Main.Coins  -- safe after guard
+
+-- Non-nil type — no guard needed:
+local function apply(cfg: Config)
+    cfg.apply()  -- direct use; if nil, fix the type
+end
+```
+
+## Anti-Patterns to Avoid
+
+### Excessive Instance Checking
+
+**Bad:**
+```luau
+local sc = btn:FindFirstChildOfClass('UIScale')
+if not sc then
+    sc = Instance.new('UIScale')
+    sc.Scale = 0
+    sc.Parent = btn
+end
+```
+
+**Better:**
+```luau
+-- Trust your setup, check once at initialization
+local popup = playerGui:WaitForChild('InventoryPopup')
+local grid = popup:FindFirstChild('Grid')
+```
+
+### Overuse of FindFirstChild
+
+**Bad:**
+```luau
+local selectName = leftPanel:FindFirstChild('SelectName')
+local selectRarity = leftPanel:FindFirstChild('SelectRarity')
+-- 20+ more...
+```
+
+**Better:**
+```luau
+local popup = playerGui:WaitForChild('InventoryPopup')
+local leftPanel = popup.LeftPanel  -- direct access
+local selectName = leftPanel.SelectName
+```
+
+### Premature Abstraction
+
+**Bad:**
+```luau
+local function showPanels(forceReplay) panels:show(forceReplay) end
+local function hidePanels() panels:hide() end
+```
+
+**Better:**
+```luau
+panels:show(forceReplay)  -- call directly
+panels:hide()
+```
+
+## Local Caching
+
+Cache accessed values into locals at top of function:
+
+```luau
+-- Good — cache once:
+local function update()
+    local name = player.Name
+    local has_char = player.Character ~= nil
+    
+    label.Text = name
+    frame.Size = UDim2.fromScale(has_char and 1 or 0, 1)
+    print(name)
+end
+```
+
+## Comment Conventions
+
+- Only the four section banner comments
+- Inline markers: `-- *` note, `-- ?` question, `-- TODO`
+- Never narrate code (no "increment counter" comments)
+- Top-of-file usage block for CollectionService scripts:
+
+```luau
+--[[
+    Usage:
+    - Tag GuiButton with "Effect::Ripple" to enable ripple.
+]]
+```
+
+## CollectionService Tags
+
+Format: `Category::Subcategory`
+
+Examples:
+- `Effect::Ripple`
+- `Effect::Ripple::Mask`

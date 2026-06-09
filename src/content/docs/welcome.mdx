@@ -5,10 +5,20 @@ description: Introduction to Anime Guardian Rework documentation.
 
 Welcome to the Anime Guardian Rework documentation.
 
-## About
+## What is this project?
 
-This documentation covers the rework of the Anime Guardian lobby system.
+Anime Guardian Rework is a Roblox game lobby system built in Luau with a reactive UI stack:
+
+- **[Vide](https://github.com/centau/vide)** - Reactive UI framework for component rendering
+- **[Charm](https://github.com/centau/charm)** - Atomic state management using Atoms
+- **[Janitor](https://github.com/howmanysmall/Janitor)** - Cleanup and lifecycle management
+
+## Architecture
+
+The system follows a reactive data flow: client boots → loads player save → binds state to Charm atoms → Vide components auto-render. All modules use Janitor for proper cleanup on disconnect.
+
+See [Architecture](/ag-lobby-rework-docs/architecture/) for detailed system design.
 
 ## Getting Started
 
-Browse the sidebar to explore documentation sections.
+Browse the sidebar for API reference and implementation guides.

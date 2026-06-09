@@ -1,0 +1,109 @@
+---
+title: Architecture Overview
+description: High-level system architecture and data flow for Anime Guardian Rework.
+---
+
+## System Overview
+
+Anime Guardian Rework is a Roblox Luau project built with a reactive UI architecture using **Vide** (reactive UI framework), **Charm** (atomic state management), and **Janitor** (cleanup/lifecycle management).
+
+## Technology Stack
+
+| Layer | Library | Purpose |
+|-------|---------|---------|
+| UI Framework | [Vide](https://github.com/centau/vide) | Reactive component rendering |
+| State Management | [Charm](https://github.com/centau/charm) | Atomic state containers (Atoms) |
+| Cleanup | [Janitor](https://github.com/howmanysmall/Janitor) | Resource lifecycle management |
+| Remote Communication | [Blink](https://github.com/phoria/blink) | Type-safe networking |
+
+## Data Flow
+
+import { Steps } from '@astrojs/starlight/components';
+
+<Steps>
+
+1. **Client Boot** — Player joins, systems initialize
+
+2. **Load Save** — `UserSave` helper fetches player data from server
+
+3. **Bind State** — `ClientState` creates reactive atoms (currency, inventory, settings)
+
+4. **Drive UI** — Vide components subscribe to state atoms, auto-re-render on changes
+
+5. **Cleanup** — Janitor handles disconnection cleanup
+
+</Steps>
+
+## State Architecture
+
+### Atoms (Charm)
+
+```luau
+-- ClientState.luau
+local Charm = require(ReplicatedStorage.Vendor.Charm)
+
+-- Single source of truth for reactive state
+export type ClientState = {
+    coins: Charm.Atom<number>,
+    gems: Charm.Atom<number>,
+    inventory: Charm.Atom<{ [string]: number }>,
+}
+
+-- UI subscribes automatically
+local coinDisplay = Vide.create "TextLabel" {
+    Text = function() return tostring(ClientState.coins()) end
+}
+```
+
+### Key Patterns
+
+- **Read**: Call atom as function `state.coins()`
+- **Write**: Pass value `state.coins(100)`
+- **Subscribe**: Use in Vide component, auto-updates
+- **Computed**: Derive with `Charm.peek()` or `Vide.source()`
+
+## Component Architecture
+
+UI components follow Vide's reactive pattern:
+
+```luau
+local function Hotbar(props: { items: Vide.Source<{Item}> })
+    return Vide.create "Frame" {
+        -- Children react to props.items changes
+        Vide.children = function()
+            local items = props.items()
+            -- Re-renders when items() changes
+        end
+    }
+end
+```
+
+## Server Architecture
+
+Server uses similar patterns with additional considerations:
+- **SaveService** - Handles DataStore persistence
+- **RewardService** - Manages currency/inventory transactions
+- **Streaming** - Unit streaming for performance
+
+## Cleanup Patterns
+
+All modules use Janitor for cleanup:
+
+```luau
+local Janitor = require(ReplicatedStorage.Vendor.Janitor)
+local janitor = Janitor.new()
+
+-- Add connections, instances to janitor
+janitor:Add(connection)
+janitor:Add(instance)
+
+-- Cleanup on player leave / component destroy
+janitor:Destroy()
+```
+
+## Inter-Module Dependencies
+
+- **UI Components** → depend on → **ClientState** (atoms)
+- **ClientState** → depends on → **UserSave** (data loading)
+- **Server Services** → depend on → **SaveTemplate** (type definitions)
+- **Cleanup** → Janitor used everywhere

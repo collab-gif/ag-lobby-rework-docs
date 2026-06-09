@@ -1,0 +1,54 @@
+---
+title: Installed Packages
+description: Third-party packages and dependencies used in the project.
+---
+
+## Core Dependencies
+
+These packages form the foundation of the project architecture.
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| [Charm](https://wally.run/package/littensy/charm) | `^0.10.0` | Atomic state management using atoms |
+| [Vide](https://wally.run/package/centau/vide) | `^0.3.1` | Reactive UI framework for component rendering |
+| [Janitor](https://wally.run/package/howmanysmall/janitor) | `^1.17.0` | Resource cleanup and lifecycle management |
+
+## Utility Packages
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| [GoodSignal](https://wally.run/package/stravant/goodsignal) | `0.3.1` | Type-safe event/signal system |
+| [Observers](https://wally.run/package/sleitnick/observers) | `^0.5.0` | CollectionService tag lifecycle management |
+| [Iter](https://wally.run/package/chriscerie/iter) | `^0.1.0` | Iterator utilities |
+| [Promise](https://wally.run/package/lukadev-0/typed-promise) | `^4.0.2` | Async promise implementation |
+| [T](https://wally.run/package/osyrisrblx/t) | `^3.1.1` | Type checking and validation |
+
+## UI & Debug
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| [Iris](https://wally.run/package/sirmallard/iris) | `^2.5.0` | Immediate mode GUI library |
+| [TopbarPlus](https://wally.run/package/1foreverhd/topbarplus) | `^3.4.0` | Topbar icon management |
+| [UILabs](https://wally.run/package/pepeeltoro41/ui-labs) | `2.4.2` | UI component testing/debugging |
+
+## Development & Admin
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| [Cmdr](https://wally.run/package/evaera/cmdr) | `^1.12.0` | Command console for admins |
+| [ImGizmo](https://wally.run/package/jakeywastaken/imgizmo) | `^3.6.6` | In-game 3D gizmos for debugging |
+| [QuickZone](https://wally.run/package/ldgerrits/quickzone) | `^1.4.6` | Spatial zone/queries |
+
+## Package Installation
+
+Packages are managed via [Wally](https://github.com/UpliftGames/wally), a package manager for Roblox.
+
+```bash
+# Install all dependencies
+wally install
+
+# Add a new package
+wally add <author>/<package>@<version>
+```
+
+See `wally.toml` in the project root for the full dependency manifest.
