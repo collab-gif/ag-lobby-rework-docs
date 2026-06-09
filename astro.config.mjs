@@ -5,8 +5,8 @@ import starlightLlmsTxt from "starlight-llms-txt";
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://collab-gif.github.io",
-  base: "/AG",
+  site: "https://collab-gif.github.io/",
+  base: "/ag-lobby-rework-docs/",
   integrations: [
     starlight({
       plugins: [starlightLlmsTxt()],
