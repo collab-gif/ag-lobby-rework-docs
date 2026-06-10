@@ -14,6 +14,7 @@ ClientState exports a table of Charm atoms and computed values that represent th
 ```luau
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local ClientState = require(ReplicatedStorage.Modules.ClientState)
+local CharmUtils = require(ReplicatedStorage.Vendor.CharmUtils)
 local Vide = require(ReplicatedStorage.Packages.Vide)
 local Charm = require(ReplicatedStorage.Packages.Charm)
 
@@ -21,12 +22,10 @@ local Charm = require(ReplicatedStorage.Packages.Charm)
 local currentLevel = ClientState.Level()
 local hasToast = ClientState.HasToast()
 
--- Reactive UI with Vide
+-- Reactive UI with Vide (must bridge Charm atom → Vide source first)
+local source_level = CharmUtils.useAtom(ClientState.Level)
 local levelLabel = Vide.create 'TextLabel' {
-    Vide.effect(function()
-        local level = ClientState.Level()
-        return { Text = `Level {level}` }
-    end),
+    Text = Vide.derive(function() return `Level {source_level()}` end),
 }
 
 -- Subscribe to changes
@@ -63,8 +62,8 @@ Table containing atoms for current and maximum EXP.
 | `EXP.Max` | EXP required for next level |
 
 ```luau
--- Calculate progress percentage
-local progress = Charm.computed(function()
+-- Bridge derived Charm computation → Vide source
+local source_progress = CharmUtils.useAtom(function()
     local current = ClientState.EXP.Val()
     local max = ClientState.EXP.Max()
     return if max > 0 then current / max else 0
@@ -72,9 +71,7 @@ end)
 
 -- Use in UI bar
 Vide.create 'Frame' {
-    Size = function()
-        return UDim2.fromScale(progress(), 1)
-    end,
+    Size = Vide.derive(function() return UDim2.fromScale(source_progress(), 1) end),
 }
 ```
 
@@ -96,11 +93,10 @@ local count = #queue
 Computed value indicating whether there are any toasts in the queue.
 
 ```luau
--- Show/hide toast container based on queue
+-- Bridge Charm computed → Vide source; Vide cannot track Charm atoms directly
+local source_has_toast = CharmUtils.useAtom(ClientState.HasToast)
 local container = Vide.create 'Frame' {
-    Visible = function()
-        return ClientState.HasToast()
-    end,
+    Visible = source_has_toast,
 }
 ```
 
@@ -138,11 +134,11 @@ This means:
 ### Do: Use atoms in reactive contexts
 
 ```luau
--- Good: Reactive Vide component
+-- Good: Bridge Charm atom to Vide source, then use in component
+-- (Vide's reactive system cannot track Charm atoms directly)
+local source_level = CharmUtils.useAtom(ClientState.Level)
 Vide.create 'TextLabel' {
-    Text = function()
-        return `Level {ClientState.Level()}`
-    end,
+    Text = Vide.derive(function() return `Level {source_level()}` end),
 }
 ```
 

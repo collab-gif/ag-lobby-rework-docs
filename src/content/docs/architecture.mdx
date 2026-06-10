@@ -49,9 +49,10 @@ export type ClientState = {
     inventory: Charm.Atom<{ [string]: number }>,
 }
 
--- UI subscribes automatically
+-- Bridge Charm atom to Vide source via CharmUtils.useAtom
+local source_coins = CharmUtils.useAtom(ClientState.coins)
 local coinDisplay = Vide.create "TextLabel" {
-    Text = function() return tostring(ClientState.coins()) end
+    Text = function() return tostring(source_coins()) end
 }
 ```
 
@@ -59,7 +60,8 @@ local coinDisplay = Vide.create "TextLabel" {
 
 - **Read**: Call atom as function `state.coins()`
 - **Write**: Pass value `state.coins(100)`
-- **Subscribe**: Use in Vide component, auto-updates
+- **Subscribe (Charm-only)**: Use in `Charm.effect` — Charm atoms are NOT tracked by Vide's reactive system
+- **Subscribe (Vide UI)**: Bridge via `CharmUtils.useAtom(atom)` to get a Vide-compatible source
 - **Computed**: Derive with `Charm.peek()` or `Vide.source()`
 
 ## Component Architecture
